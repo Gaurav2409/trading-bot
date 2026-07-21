@@ -2,16 +2,21 @@
 
 > **Ontology coordination:** Execute Tasks 1–14 in this plan, then execute
 > `docs/superpowers/plans/2026-07-21-trading-world-ontology-implementation.md` in full. That plan
-> augments Tasks 12–13 and supersedes the semantic/KG/research responsibilities of Tasks 15–17 below. Resume here at Task
-> 18 using `DecisionFeatureSet`; Task 32 calls `ReasoningCycle`; Task 34 consumes semantic promotion
-> evidence; Task 35 remains the causal-replay specialization. Where the two plans conflict, the
+> augments Tasks 12–13 and supersedes the semantic/KG/research responsibilities of Tasks 15–17 below.
+> Resume here at Task 18 using only activated `HotPathCandidate`s; Task 19 consumes tighten-only
+> `RiskOverlaySet`; Task 32 calls `ReasoningCycle`/`SemanticDecisionHandoff`; Task 34 consumes
+> semantic promotion evidence without activating it; Task 35 replays sealed semantic relationship
+> artifacts; Task 36 enforces paper/live canaries. Where the two plans conflict, the
 > approved ontology design and ontology implementation plan win.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the paper-first v1 Trading OS for Zerodha and Alpaca with a strictly typed LLM seam, deterministic sizing/risk/compliance/execution, crash-safe broker effects, independently validated data, and a frozen promotion gate.
 
-**Architecture:** Implement a ports-and-adapters Python package around an append-only event core. Slow LLM research and causal-KG classification produce only strict seam types; all numerical sizing, risk, compliance, protection, accounting, orchestration, and promotion logic remains deterministic. Deliver working software incrementally in four milestones: deterministic foundation, validated research/data, protected paper execution, then evaluation and operations.
+**Architecture:** Implement a ports-and-adapters Python package around an append-only event core.
+The semantic reasoning layer produces sealed belief, feature, risk-overlay, and activation artifacts;
+only a versioned deterministic strategy policy may create a `HotPathCandidate`. All sizing, risk,
+compliance, protection, accounting, orchestration, and economic effects remain deterministic.
 
 **Tech Stack:** Python 3.11+, `uv`, Pydantic v2, SQLAlchemy 2 + asyncpg/Postgres/TimescaleDB, Valkey, Neo4j Community, APScheduler, exchange-calendars, pandas/NumPy/SciPy/statsmodels, Alpaca SDK, Kite Connect, FastAPI, python-telegram-bot, structlog, pytest/Hypothesis/mypy/ruff.
 
@@ -27,6 +32,11 @@
 - A position is `PROTECTED` only when broker-confirmed protective quantity covers broker-reconciled open quantity. Coverage deficits block new exposure and move the symbol to `REDUCING`.
 - Fixed-point `Decimal` is mandatory for quantities, prices, money, FX rates, fees, taxes, and accounting. Binary floating point is allowed only inside statistical arrays and must be converted at typed boundaries.
 - Every signal, traversal, simulation, and evaluation consumes a sealed `ValidatedDataSnapshotId`; no consumer reads mutable `latest` data.
+- Every semantic decision additionally binds the final `SemanticSnapshotId`, sealed
+  `SemanticProjectionReceiptId`, ontology/query/reasoning/support/feature policy releases, cutoff,
+  and exact `DecisionFeatureActivationId`.
+- Semantic release promotion never grants economic authority. `DISABLED/SHADOW` inputs cannot alter
+  candidates or risk; paper/live influence must pass the immutable canary sequence.
 - CI never places a live Kite order. Kite behavior is tested with recorded fixtures, the simulated broker, and human-gated out-of-band smoke procedures.
 - Live mode remains mechanically disabled until the 90-day promotion gate and every D19 verify-before-live blocker are recorded as satisfied.
 - Use async interfaces for broker, database, market-data, notification, and external-provider operations; pure calculations remain synchronous.
@@ -869,6 +879,9 @@ git commit -m "feat: add append-only recovery event model"
 - Consumes: `EventEnvelope` and `EventStorePort` from Tasks 5–6.
 - Produces: the D15 `EventLog` implementation as `PostgresEventStore`, with atomic expected-version enforcement and immutable JSONB payloads.
 
+`20260721_0001_event_log.py` declares `revision = "20260721_0001"` and
+`down_revision = None`; the coordinated plans extend this as one Alembic head.
+
 - [ ] **Step 1: Write the integration contract before the schema exists**
 
 ```python
@@ -1557,6 +1570,8 @@ git commit -m "feat: add deterministic factors and independent rule null"
 
 ### Task 15: Enforce causal-KG edge admission and deterministic confidence
 
+> **Superseded—do not execute.** Ontology implementation Tasks 3, 6, and 8 replace this task.
+
 **Files:**
 - Create: `src/trading_os/kg/__init__.py`
 - Create: `src/trading_os/kg/models.py`
@@ -1644,6 +1659,9 @@ git commit -m "feat: enforce causal graph edge admission gates"
 
 ### Task 16: Implement deterministic causal traversal and fitted-weight artifacts
 
+> **Superseded—do not execute.** Ontology implementation Tasks 11–12 replace `ExposureVector` with
+> relationship evidence plus tighten-only `RiskOverlaySet`.
+
 **Files:**
 - Create: `src/trading_os/kg/traversal.py`
 - Create: `src/trading_os/kg/weights.py`
@@ -1720,6 +1738,9 @@ git commit -m "feat: compute deterministic causal exposure vectors"
 ```
 
 ### Task 17: Add swappable LLM roles, analysts, and on-cadence synthesis
+
+> **Superseded—do not execute.** Ontology implementation Tasks 10–15 replace this task with bounded
+> evidence packets, belief/support rules, and the governed retrospective loop.
 
 **Files:**
 - Create: `src/trading_os/research/llm_role.py`
@@ -1830,8 +1851,10 @@ git commit -m "feat: add structured on-cadence llm research path"
 - Create: `tests/unit/portfolio/test_sizing_properties.py`
 
 **Interfaces:**
-- Consumes: admitted symbol/direction, account equity, deterministic volatility/stop distance, venue precision, and `SizingConfig`.
-- Produces: `TargetPosition` and `Sizer.size(request)`; no thesis, conviction, calibration, LLM, or KG input exists in the signature.
+- Consumes: an activated `HotPathCandidate` produced by the exact `DeterministicStrategyPolicy`,
+  account equity, deterministic volatility/stop distance, venue precision, and `SizingConfig`.
+- Produces: `TargetPosition` and `Sizer.size(request)`; no belief, decision-feature set, risk overlay,
+  thesis, conviction, calibration, LLM, or graph input exists in the signature.
 
 - [ ] **Step 1: Write formula and seam property tests**
 
@@ -1864,7 +1887,17 @@ from trading_os.portfolio.sizing import Sizer, SizingRequest
 
 def test_sizer_signature_cannot_accept_llm_values() -> None:
     fields = set(SizingRequest.model_fields)
-    forbidden = {"conviction", "thesis", "model", "prompt", "calibration", "rationale"}
+    forbidden = {
+        "belief_state",
+        "decision_features",
+        "risk_overlay",
+        "conviction",
+        "thesis",
+        "model",
+        "prompt",
+        "calibration",
+        "rationale",
+    }
     assert fields.isdisjoint(forbidden)
 
 
@@ -1894,6 +1927,8 @@ available settled-cash cap, and venue quantity precision by flooring, never roun
 non-positive prices, stops, vol inputs, or account equity. After rounding, recompute actual risk and
 return both requested and realized risk in `TargetPosition`. Keep the 1–2% range in config; use 1%
 as the safe default until the frozen promotion manifest selects a value.
+The composition layer must validate the candidate's activation/audit envelope before building
+`SizingRequest`; `Sizer` deliberately receives only the candidate's typed symbol/direction fields.
 
 ```python
 def size(self, request: SizingRequest) -> TargetPosition:
@@ -1923,7 +1958,7 @@ git add src/trading_os/portfolio/sizing.py config/risk/paper_v1.yaml tests/unit/
 git commit -m "feat: add deterministic fixed-fractional sizing"
 ```
 
-### Task 19: Implement INR-numeraire portfolio risk and tighten-only KG overlays
+### Task 19: Implement INR-numeraire portfolio risk and tighten-only semantic overlays
 
 **Files:**
 - Create: `src/trading_os/portfolio/risk.py`
@@ -1932,7 +1967,8 @@ git commit -m "feat: add deterministic fixed-fractional sizing"
 - Create: `tests/unit/portfolio/test_covariance.py`
 
 **Interfaces:**
-- Consumes: `TargetPosition`, global portfolio snapshot, live FX rate records, daily return matrix, deterministic cluster map, `ExposureVector`, and risk config.
+- Consumes: `TargetPosition`, global portfolio snapshot, live FX rate records, daily return matrix,
+  deterministic cluster map, activated `RiskOverlaySet`, and risk config.
 - Produces: `RiskDecision{approved_target, reasons, metrics}` and common-INR VaR/CVaR/cluster exposure.
 
 - [ ] **Step 1: Write common-numeraire and tighten-only tests**
@@ -1942,10 +1978,15 @@ git commit -m "feat: add deterministic fixed-fractional sizing"
 from trading_os.portfolio.risk import RiskEngine
 
 
-def test_defensive_overlay_can_shrink_but_never_inflate(base_risk_request, defensive_vector) -> None:
-    baseline = RiskEngine().evaluate(base_risk_request.without_exposure_vector())
-    defended = RiskEngine().evaluate(base_risk_request.with_exposure_vector(defensive_vector))
+def test_defensive_overlay_can_shrink_but_never_inflate(base_risk_request, defensive_overlay) -> None:
+    baseline = RiskEngine().evaluate(base_risk_request.without_risk_overlay())
+    defended = RiskEngine().evaluate(base_risk_request.with_risk_overlay(defensive_overlay))
     assert defended.approved_target.quantity.value <= baseline.approved_target.quantity.value
+
+
+def test_overlay_above_one_is_unconstructable() -> None:
+    with pytest.raises(ValidationError):
+        RiskOverlaySet.example(multipliers={"portfolio": Decimal("1.01")})
 
 
 def test_cluster_cap_includes_both_markets_and_pending_orders(cross_market_risk_request) -> None:
@@ -1975,8 +2016,9 @@ Expected: FAIL with missing risk modules.
 Convert US sleeve returns and exposures to INR using pinned live-rate records. Calculate historical
 VaR/CVaR at configured levels, drawdown, gross per-position exposure, and correlation-cluster
 exposure across positions plus pending orders in both strategy books. Reject stale FX records.
-Apply exposure-vector multipliers only through `min(Decimal("1"), multiplier)` and include the
-applied graph/weight/rung versions in audit metrics. Risk may shrink or veto; it cannot increase the
+Validate the immutable overlay's activation and semantic-policy bindings before use. Apply
+`RiskOverlaySet` multipliers only through `min(Decimal("1"), multiplier)` and include its activation,
+reasoning-policy, risk-policy, and retrieval receipt IDs in audit metrics. Risk may shrink or veto; it cannot increase the
 Sizer target. Return a new rounded target and require compliance to rerun after risk rounding.
 
 ```python
@@ -2774,7 +2816,7 @@ git commit -m "feat: add exposure-aware hitl approval backend"
 ### Task 29: Persist Timescale market data and snapshot-scoped source records
 
 **Files:**
-- Create: `alembic/versions/20260721_0002_market_data.py`
+- Create: `alembic/versions/20260721_0005_market_data.py`
 - Create: `src/trading_os/data/repository.py`
 - Create: `src/trading_os/data/adapters/__init__.py`
 - Create: `src/trading_os/data/adapters/nse_bse.py`
@@ -2787,6 +2829,9 @@ git commit -m "feat: add exposure-aware hitl approval backend"
 **Interfaces:**
 - Consumes: raw/normalized models, market-data ports, independent CA/universe sources, and snapshot IDs.
 - Produces: append-only source tables, Timescale OHLCV hypertables, source adapters, and `SnapshotDataRepository` methods that always require a snapshot ID.
+
+`20260721_0005_market_data.py` declares `revision = "20260721_0005"` and
+`down_revision = "20260721_0004"`; an Alembic test asserts exactly one head.
 
 - [ ] **Step 1: Write snapshot-scoped repository tests**
 
@@ -2854,14 +2899,14 @@ Expected: all tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add alembic/versions/20260721_0002_market_data.py src/trading_os/data tests/integration/data tests/contract/data
+git add alembic/versions/20260721_0005_market_data.py src/trading_os/data tests/integration/data tests/contract/data
 git commit -m "feat: persist snapshot-scoped market data"
 ```
 
 ### Task 30: Implement immutable FX/accounting ledgers and broker cash-event ingestion
 
 **Files:**
-- Create: `alembic/versions/20260721_0003_accounting.py`
+- Create: `alembic/versions/20260721_0006_accounting.py`
 - Create: `src/trading_os/accounting/__init__.py`
 - Create: `src/trading_os/accounting/fx.py`
 - Create: `src/trading_os/accounting/ledger.py`
@@ -2875,6 +2920,9 @@ git commit -m "feat: persist snapshot-scoped market data"
 **Interfaces:**
 - Consumes: fills, fees, cash events, immutable live/Rule-115 rate records, strategy attribution, and broker transaction IDs.
 - Produces: balanced native/INR journal entries, FX lots, tax/report views, and idempotent cash-event ingestion.
+
+`20260721_0006_accounting.py` declares `revision = "20260721_0006"` and
+`down_revision = "20260721_0005"`; an Alembic test asserts exactly one head.
 
 - [ ] **Step 1: Write rate, replay, and no-double-count tests**
 
@@ -2951,14 +2999,14 @@ Expected: all tests PASS and every journal fixture balances.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add alembic/versions/20260721_0003_accounting.py src/trading_os/accounting src/trading_os/data/broker_cash_ingestor.py tests/unit/accounting tests/unit/data/test_broker_cash_ingestor.py
+git add alembic/versions/20260721_0006_accounting.py src/trading_os/accounting src/trading_os/data/broker_cash_ingestor.py tests/unit/accounting tests/unit/data/test_broker_cash_ingestor.py
 git commit -m "feat: add immutable fx and tax accounting"
 ```
 
 ### Task 31: Add the calibration store without creating a sizing wire
 
 **Files:**
-- Create: `alembic/versions/20260721_0004_calibration.py`
+- Create: `alembic/versions/20260721_0007_calibration.py`
 - Create: `src/trading_os/portfolio/calibration.py`
 - Create: `tests/unit/portfolio/test_calibration.py`
 - Create: `tests/unit/portfolio/test_calibration_seam.py`
@@ -2966,6 +3014,9 @@ git commit -m "feat: add immutable fx and tax accounting"
 **Interfaces:**
 - Consumes: one closed `PositionEpisode`, entry conviction band/regime/market/model metadata, and realized outcome.
 - Produces: `CalibrationStore`, idempotent `CalibrationRecorded`, Beta-Bernoulli summaries, maturity status at N=30, and a gate/rank-only read view.
+
+`20260721_0007_calibration.py` declares `revision = "20260721_0007"` and
+`down_revision = "20260721_0006"`; an Alembic test asserts exactly one head.
 
 - [ ] **Step 1: Write idempotency, maturity, and no-sizing-import tests**
 
@@ -3031,7 +3082,7 @@ Expected: all tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add alembic/versions/20260721_0004_calibration.py src/trading_os/portfolio/calibration.py tests/unit/portfolio/test_calibration.py tests/unit/portfolio/test_calibration_seam.py
+git add alembic/versions/20260721_0007_calibration.py src/trading_os/portfolio/calibration.py tests/unit/portfolio/test_calibration.py tests/unit/portfolio/test_calibration_seam.py
 git commit -m "feat: record calibration for gate rank only"
 ```
 
@@ -3044,9 +3095,12 @@ git commit -m "feat: record calibration for gate rank only"
 - Create: `tests/unit/control/test_scheduler.py`
 - Create: `tests/unit/control/test_eod_cycle.py`
 - Create: `tests/unit/control/test_job_idempotency.py`
+- Create: `tests/unit/control/test_semantic_activation.py`
 
 **Interfaces:**
-- Consumes: readiness gates, data ingest/correctness, research, traversal, signals, sizing/risk/compliance, HITL, coordinator, reconciliation, accounting, and event store.
+- Consumes: readiness gates, data ingest/correctness, `ReasoningCycle`,
+  `SemanticDecisionHandoff`, independent rule-null, activated deterministic strategy policy,
+  sizing/risk/compliance, HITL, coordinator, reconciliation, accounting, and event store.
 - Produces: calendar-aware job definitions, unique cycle/job keys, and `EodCycle.run_market_day(market, trade_date)` phase results.
 
 - [ ] **Step 1: Write phase-order and duplicate-fire tests**
@@ -3068,6 +3122,18 @@ import asyncio
 async def test_duplicate_scheduler_fire_executes_cycle_once(scheduler, cycle_key) -> None:
     results = await asyncio.gather(scheduler.fire(cycle_key), scheduler.fire(cycle_key))
     assert sum(result.started for result in results) == 1
+
+
+async def test_shadow_reasoning_cannot_change_orders_or_risk(shadow_cycle, rule_null_cycle) -> None:
+    shadow = await shadow_cycle.run_market_day("india", "2026-07-21")
+    baseline = await rule_null_cycle.run_market_day("india", "2026-07-21")
+    assert shadow.order_intents == baseline.order_intents
+    assert shadow.risk_reservations == baseline.risk_reservations
+
+
+async def test_canary_scope_cannot_leak(active_canary_cycle) -> None:
+    result = await active_canary_cycle.run_market_day("india", "2026-07-21")
+    assert set(result.semantic_influenced_symbols) <= set(result.activation.scope)
 ```
 
 - [ ] **Step 2: Run and observe missing scheduler/orchestrator**
@@ -3080,12 +3146,16 @@ Expected: FAIL with missing modules.
 
 Use APScheduler only to trigger durable job intents; business ordering lives in `EodCycle`.
 Acquire a unique job lease on `(job_kind, market, exchange_trade_date, config_hash)`. Run phases in
-this order: session/credential readiness; ingest/correctness seal; on-cadence slow research and
-deterministic traversal; seam projection; deterministic gate/rank/sizing/risk/compliance;
+this order: session/credential readiness; ingest/correctness and semantic projection-receipt seal;
+`ReasoningCycle` plus independent rule-null; activation lookup and `SemanticDecisionHandoff`;
+deterministic policy/gate/rank/sizing then tighten-only semantic overlay plus portfolio risk/compliance;
 exposure-aware HITL and revalidation; durable execution/protection; reconciliation/accounting/
 calibration and cycle completion. Each phase appends started/completed/failed events and resumes
 from the first incomplete phase. Label-refresh events may run off cadence but cannot enter the
-decision phase. Research jobs may run per sleeve concurrently; reservation commit remains global.
+decision phase. In `DISABLED` and `SHADOW`, semantic results are audited but produce no candidate or
+risk input. In canary/active modes, influence is limited to the activation's exact scope, caps, and
+horizon. Semantic promotion does not alter this state. Research jobs may run per sleeve concurrently;
+reservation commit remains global.
 
 ```python
 async def run_market_day(self, market: Market, trade_date: date) -> CycleResult:
@@ -3103,7 +3173,7 @@ async def run_market_day(self, market: Market, trade_date: date) -> CycleResult:
 
 - [ ] **Step 4: Verify order, restart, and duplicate suppression**
 
-Run: `uv run pytest tests/unit/control/test_scheduler.py tests/unit/control/test_eod_cycle.py tests/unit/control/test_job_idempotency.py -v`
+Run: `uv run pytest tests/unit/control/test_scheduler.py tests/unit/control/test_eod_cycle.py tests/unit/control/test_job_idempotency.py tests/unit/control/test_semantic_activation.py -v`
 
 Expected: all tests PASS.
 
@@ -3250,7 +3320,9 @@ git commit -m "feat: add dead-man observability and backup verification"
 - Create: `tests/unit/evaluation/test_promotion.py`
 
 **Interfaces:**
-- Consumes: separately attributed LLM/null/index returns, trial registry, costs, decision windows, sim-vs-paper fills, manifest thresholds, and event store.
+- Consumes: separately attributed semantic-assisted/rule-null/index returns, trial registry, costs,
+  decision windows, sim-vs-paper fills, Task 13 differential semantic evidence and contamination
+  receipts, immutable activation/canary receipts, manifest thresholds, and event store.
 - Produces: CPCV paths, DSR, per-book net scoreboard, content-hashed `PromotionManifest`, and `PromotionDecision`.
 
 - [ ] **Step 1: Write frozen-ruler and all-gates tests**
@@ -3269,6 +3341,14 @@ def test_promotion_fails_when_any_single_gate_fails(passing_evidence, promotion_
     for field in passing_evidence.gate_fields:
         failed = passing_evidence.fail_only(field)
         assert PromotionEvaluator(promotion_manifest).evaluate(failed).approved is False
+
+
+def test_semantic_release_promotion_cannot_satisfy_activation_gate(
+    passing_evidence,
+    promotion_manifest,
+) -> None:
+    missing_canary = passing_evidence.model_copy(update={"decision_feature_canary_receipt": None})
+    assert PromotionEvaluator(promotion_manifest).evaluate(missing_canary).approved is False
 ```
 
 ```python
@@ -3320,6 +3400,13 @@ resets the 90-day clock. The total-cost gate annualizes broker subscriptions, al
 market/fundamental data, storage/backups, and LLM spend; promotion fails if their combined committed
 cost exceeds the frozen fraction of the explicitly attested disposable capital balance.
 
+Replace the legacy KG-only fields in the manifest with semantic evaluation bindings: ontology,
+query-pack, reasoning/support-rule, feature, deterministic-strategy, and risk-overlay releases;
+sealed snapshot/projection/retrieval receipts; corrected primary effect and p-value; fixed retirement
+horizon; knowledge-contamination receipts; and decision-feature activation/canary receipts. Semantic
+promotion evidence is necessary but never substitutes for an economic activation or completed
+canary. The permanent relational champion and rule-null remain separate control arms.
+
 - [ ] **Step 4: Verify every promotion gate**
 
 Run: `uv run pytest tests/unit/evaluation -v`
@@ -3333,75 +3420,94 @@ git add src/trading_os/evaluation config/promotion/paper_v1.yaml tests/unit/eval
 git commit -m "feat: freeze rigorous paper promotion scorecard"
 ```
 
-### Task 35: Add causal-KG historical replay and rank-correlation validation
+### Task 35: Add sealed semantic relationship replay and rank-correlation validation
 
 **Files:**
-- Create: `src/trading_os/evaluation/kg_replay.py`
+- Create: `src/trading_os/evaluation/semantic_replay.py`
 - Create: `config/replays/covid_2020.yaml`
 - Create: `config/replays/russia_ukraine_2022.yaml`
-- Create: `tests/unit/evaluation/test_kg_replay.py`
+- Create: `tests/unit/evaluation/test_semantic_replay.py`
 - Create: `tests/fixtures/replays/covid_2020_expected.json`
 - Create: `tests/fixtures/replays/russia_ukraine_2022_expected.json`
 
 **Interfaces:**
-- Consumes: historical sealed snapshots, versioned graph/weight artifacts available as of event date, realized cross-sectional returns, and cost model.
-- Produces: audited rank correlation, beneficiary/harm ranking, net-of-cost replay result, and promotion evidence.
+- Consumes: historical sealed data/semantic snapshots, projection/retrieval receipts,
+  `ReasoningPolicyRelease`, `HypothesisSupportRuleRelease`, relationship `EvidencePacket`s,
+  tighten-only `RiskOverlaySet`, realized cross-sectional returns, and cost model—all available at
+  event cutoff.
+- Produces: audited rank correlation, beneficiary/harm ranking, net-of-cost replay result,
+  contamination receipt where an LLM role was used, and promotion evidence.
 
 - [ ] **Step 1: Write no-look-ahead and reproducibility tests**
 
 ```python
-# tests/unit/evaluation/test_kg_replay.py
-def test_replay_uses_only_edges_available_on_event_date(covid_replay) -> None:
+# tests/unit/evaluation/test_semantic_replay.py
+def test_replay_uses_only_assertions_available_on_event_date(covid_replay) -> None:
     result = covid_replay.run()
-    assert all(path.edge_valid_from <= result.event_as_of for path in result.audited_paths)
+    assert all(path.available_at <= result.event_as_of for path in result.audited_paths)
 
 
 def test_replay_is_byte_reproducible(russia_ukraine_replay) -> None:
     assert russia_ukraine_replay.run().model_dump_json() == russia_ukraine_replay.run().model_dump_json()
+
+
+def test_historical_llm_contamination_blocks_replay_promotion(contaminated_replay) -> None:
+    result = contaminated_replay.run()
+    assert result.promotable is False
+    assert result.knowledge_contamination_receipt_id is not None
 ```
 
 - [ ] **Step 2: Run and observe missing replay evaluator**
 
-Run: `uv run pytest tests/unit/evaluation/test_kg_replay.py -v`
+Run: `uv run pytest tests/unit/evaluation/test_semantic_replay.py -v`
 
-Expected: FAIL with missing KG replay module.
+Expected: FAIL with missing semantic replay module.
 
 - [ ] **Step 3: Implement frozen historical replay definitions**
 
-Each YAML pins event as-of, snapshot ID, graph/weight versions, universe, driver/source/phase/
-direction/ordinal labels, evaluation horizon, realized-return source, cost model, and expected
-minimum rank-correlation rule. Replay rejects graph edges or source material published after event
-as-of. Compute Spearman rank correlation, top/bottom bucket spread, turnover, and net costs. Store
-top contributing paths for audit but never feed replay results into live size. The two named replay
-results are required promotion evidence, not optional examples.
+Each YAML pins event as-of; data snapshot; semantic snapshot and projection receipt; ontology,
+query-pack, reasoning/support-rule, feature, risk-overlay, and deterministic-strategy policy
+releases; universe; closed event labels; evaluation horizon; realized-return source; cost model; and
+expected minimum rank-correlation rule. Replay rejects unsealed snapshots, mismatched receipts, and
+any assertion/observation/source unavailable at the cutoff. If an LLM-produced classification is
+present, run retrieval/no-retrieval/masked probes and exclude contaminated cells. Compute Spearman
+rank correlation, top/bottom bucket spread, turnover, and net costs. Store bounded contributing
+paths and retrieval receipts for audit, but never feed replay results into live size. The two named
+replay results are mandatory promotion evidence, not optional examples.
 
 ```python
-def run(self, definition: ReplayDefinition) -> KgReplayResult:
-    graph = self._graphs.load(definition.graph_version, as_of=definition.event_as_of)
-    if any(edge.valid_from > definition.event_as_of for edge in graph.edges):
+def run(self, definition: ReplayDefinition) -> SemanticReplayResult:
+    snapshot = self._snapshots.require_sealed(
+        definition.semantic_snapshot_id,
+        definition.projection_receipt_id,
+    )
+    packet = self._relationships.rebuild_exact(definition, snapshot=snapshot)
+    if any(path.available_at > definition.event_as_of for path in packet.audited_paths):
         raise LookAheadDetected(definition.replay_id)
-    vector = self._traversal.compute(graph, definition.macro_event)
+    overlays = self._risk_overlays.project_exact(packet, definition.risk_overlay_policy_release_id)
+    ranking = beneficiary_harm_ranking(packet, overlays=overlays)
     rho = scipy.stats.spearmanr(
-        vector.ranks(), definition.realized_return_ranks()
+        ranking.ranks(), definition.realized_return_ranks()
     ).statistic
-    return KgReplayResult.from_metrics(
+    return SemanticReplayResult.from_metrics(
         definition,
         spearman_rho=Decimal(str(rho)),
-        vector=vector,
+        ranking=ranking,
+        overlay_set=overlays,
     )
 ```
 
 - [ ] **Step 4: Verify both mandatory historical replays**
 
-Run: `uv run pytest tests/unit/evaluation/test_kg_replay.py -v`
+Run: `uv run pytest tests/unit/evaluation/test_semantic_replay.py -v`
 
 Expected: tests PASS against versioned fixture expectations.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/trading_os/evaluation/kg_replay.py config/replays tests/unit/evaluation/test_kg_replay.py tests/fixtures/replays
-git commit -m "feat: validate causal kg with historical replays"
+git add src/trading_os/evaluation/semantic_replay.py config/replays tests/unit/evaluation/test_semantic_replay.py tests/fixtures/replays
+git commit -m "feat: validate semantic relationships with historical replays"
 ```
 
 ### Task 36: Compose the paper CLI and mechanically guard live mode
@@ -3415,7 +3521,8 @@ git commit -m "feat: validate causal kg with historical replays"
 - Create: `tests/integration/test_paper_bootstrap.py`
 
 **Interfaces:**
-- Consumes: settings, all ports/adapters/services, promotion decision, legal/operational blocker attestations, and run mode.
+- Consumes: settings, all ports/adapters/services, promotion decision, exact
+  `DecisionFeatureActivation`/canary receipts, legal/operational blocker attestations, and run mode.
 - Produces: `build_application(settings)`, CLI commands `doctor`, `migrate`, `paper-run`, `reconcile`, `promotion-status`, and a guarded `live-run`.
 
 - [ ] **Step 1: Write paper boot and live refusal tests**
@@ -3431,6 +3538,18 @@ def test_live_refuses_when_any_required_blocker_is_open(open_blocker_evidence) -
     registry = LiveBlockerRegistry.from_config("config/live_blockers.yaml")
     with pytest.raises(LiveTradingBlocked, match="FEMA_CA_IDLE_FX_OPINION"):
         registry.assert_live_allowed(open_blocker_evidence)
+
+
+def test_live_active_cannot_skip_live_canary(paper_active_evidence) -> None:
+    registry = LiveBlockerRegistry.from_config("config/live_blockers.yaml")
+    with pytest.raises(LiveTradingBlocked, match="LIVE_CANARY_RECEIPT"):
+        registry.assert_live_allowed(paper_active_evidence)
+
+
+def test_canary_receipt_must_bind_exact_activation(mismatched_canary_evidence) -> None:
+    registry = LiveBlockerRegistry.from_config("config/live_blockers.yaml")
+    with pytest.raises(LiveTradingBlocked, match="ACTIVATION_BINDING"):
+        registry.assert_live_allowed(mismatched_canary_evidence)
 ```
 
 ```python
@@ -3467,7 +3586,11 @@ books.
 India onboarding confirmation; Finance Act/TCS/LTCG verification; FEMA-CA idle-FX/sweep/repatriation
 opinion; cross-border investment-income opinion; Zerodha below-TOPS/tag SOP; DDPI active; static IP;
 audit retention; verified backup restore; successful reconciliation/protection drill; and explicit
-`live_trading_enabled=true`. `live-run` prints only blocker IDs and safe descriptions, never secrets,
+`live_trading_enabled=true`. It also requires a completed `PAPER_CANARY`, a current
+`PAPER_ACTIVE` campaign, then a bounded `LIVE_CANARY` receipt whose activation ID, artifact releases,
+scope, caps, horizon, accounts, and rollback target exactly match the proposed `LIVE_ACTIVE`
+transition. No semantic promotion decision satisfies these activation blockers. `live-run` prints
+only blocker IDs and safe descriptions, never secrets,
 and exits nonzero if any are absent, expired, mismatched to account, or tied to a different manifest.
 
 ```python
@@ -3621,15 +3744,17 @@ git commit -m "test: prove complete recoverable paper workflow"
 
 - [ ] The D30 import/seam tests prove that changing or injecting any disallowed LLM field cannot alter sizing, risk, price, exits, compliance, or kill state.
 - [ ] The rule-null compiles and runs with the LLM/KG/calibration services unavailable.
-- [ ] Every hot-path decision references a sealed `ValidatedDataSnapshotId` and frozen rule/config versions.
+- [ ] Every hot-path decision references sealed data/semantic snapshots, projection/retrieval receipts, frozen semantic/policy releases, and exact activation.
 - [ ] Event replay after a Valkey flush produces the same projection hash.
 - [ ] Crash injection at every EOD event boundary produces no duplicate economic broker effect.
 - [ ] Every open simulated/paper position has broker-confirmed protective quantity covering reconciled quantity, or its symbol is `REDUCING/HALTED_UNVERIFIED`.
 - [ ] India and US jobs cannot reserve the same cash/risk capacity from one global snapshot version.
 - [ ] India and US compliance tests cover every D19 pre-remittance, pre-order, post-event, periodic, and pre-live rule.
 - [ ] Accounting balances in native currency and INR without summing live risk marks into realized equity/FX ledgers.
-- [ ] Mandatory COVID-2020 and Russia/Ukraine-2022 KG replays pass against as-of graph/data versions.
+- [ ] Mandatory COVID-2020 and Russia/Ukraine-2022 semantic replays pass against as-of sealed artifacts with no knowledge contamination.
 - [ ] The promotion manifest is written before the paper campaign and cannot be edited in place.
+- [ ] Semantic promotion cannot change economic behavior; shadow is economically identical to its control, and paper/live canaries cannot be skipped.
+- [ ] `RiskOverlaySet` can only tighten/veto and no skipped legacy causal-vector type appears in resumed-task interfaces.
 - [ ] All unit and fixture contract tests run without network credentials; CI has no live Kite submission path.
 - [ ] `ruff`, strict `mypy`, unit, contract, and non-live integration suites all pass.
 - [ ] Live mode remains blocked until every legal, broker, promotion, operational, and backup-restoration attestation is current and bound to the intended accounts/configuration.
@@ -3637,8 +3762,8 @@ git commit -m "test: prove complete recoverable paper workflow"
 ## Recommended Execution Boundaries
 
 1. Complete Tasks 1–11 and review the deterministic/event-sourced foundation before adding market data.
-2. Complete Tasks 12–17 and review D4 containment, snapshot correctness, rule-null independence, and KG admission.
-3. Complete Tasks 18–28 and run the complete broker/protection/fail-direction contract suite.
-4. Complete Tasks 29–37 and run the full paper acceptance matrix.
+2. Complete Tasks 12–14, then execute the full Trading World Ontology plan; do not execute the superseded Tasks 15–17.
+3. Complete Tasks 18–28 and run the semantic seam plus broker/protection/fail-direction contract suite.
+4. Complete Tasks 29–37 and run the full paper, canary, replay, and promotion acceptance matrix.
 
 Do not start a later milestone while the preceding milestone's tests or review findings remain open.

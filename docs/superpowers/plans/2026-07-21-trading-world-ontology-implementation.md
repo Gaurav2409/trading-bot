@@ -2,9 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Validated amendment:** This plan implements the approved post-review design at
+> `docs/superpowers/specs/2026-07-21-trading-world-ontology-design.md`. The controlling review is
+> `docs/research/12a-trading-world-ontology-moa-validation.md`; rejected raw-review claims listed in
+> design §20 must not be reintroduced.
+
 **Goal:** Build the versioned, full-hybrid semantic reasoning layer that converts snapshot-scoped technical, fundamental, sentiment, macro, relationship, and portfolio evidence into auditable `InstrumentBeliefState` objects while permanently benchmarking against relational retrieval.
 
-**Architecture:** Git-owned OWL/SHACL releases and append-only factual history are canonical. Apache Jena Fuseki/TDB2 and Neo4j are immutable, rebuildable projections of a `SemanticSnapshot`; governed queries and deterministic evidence-packet builders feed `BeliefStateBuilder`, while an offline champion/challenger loop diagnoses and repairs reasoning failures without self-modifying production.
+**Architecture:** Git-owned OWL/SHACL releases and append-only factual history are canonical. A final `SemanticSnapshotId` is derived before Apache Jena Fuseki/TDB2 and Neo4j are built; a separate immutable projection receipt seals their equivalence. Governed query, reasoning-policy, and feature-policy releases feed deterministic evidence and belief builders, while a separate activation state machine prevents semantic promotion from granting economic authority.
 
 **Tech Stack:** Python 3.11+, `uv`, Pydantic v2, SQLAlchemy 2 + asyncpg/Postgres/TimescaleDB, RDFLib, pySHACL, OWL-RL, Apache Jena Fuseki 6.1.0/TDB2, Neo4j Community 2026.06.0, httpx, structlog, pytest/Hypothesis/mypy/ruff.
 
@@ -14,8 +19,8 @@
 - Term IRIs are stable and release-independent; `owl:versionIRI` identifies immutable releases. Never reuse a released IRI with a new meaning.
 - Git ontology source and append-only factual history are canonical. Fuseki and Neo4j reject application-level direct writes and are rebuildable from one manifest.
 - Use SHACL Core plus approved SPARQL constraints and bounded RDFS/OWL 2 RL-style entailments. Jena's full OWL reasoner is prohibited.
-- Every decision-consumable query binds `ValidatedDataSnapshotId`, `SemanticSnapshotId`, `OntologyReleaseId`, and `decision_cutoff`.
-- Issuer, Security, Listing, and Ticker are distinct. Fuzzy identity matches create candidates and never merge automatically.
+- Every decision-consumable query binds `ValidatedDataSnapshotId`, final `SemanticSnapshotId`, sealed `SemanticProjectionReceiptId`, `OntologyReleaseId`, `QueryPackReleaseId`, and `decision_cutoff`.
+- `LegalEntity`, `IssuerRole`, `Security`, `Listing`, `Venue`, and `TickerAlias` use typed IDs. Aliases are temporal and venue-scoped; fuzzy matches create candidates and never merge automatically.
 - Corrections append new facts and supersession links. No source, observation, claim, identity, or admission row is updated in place.
 - LLMs may propose Claims, identity candidates, closed classifications, and approved query-template selections. They cannot admit facts, merge identity, emit numeric causal strength, write graph stores, promote releases, or emit trade parameters.
 - External documents are untrusted data. Raw bytes never become system instructions, query text, ontology source, graph properties, or experiment-trace prose.
@@ -24,7 +29,13 @@
 - The relational retrieval path is a permanent champion and fallback. It cannot import RDF, Neo4j, LLM, or ontology-reasoner modules.
 - `InstrumentBeliefState` contains evidence status, provenance, contradictions, freshness, and missingness—not target price, quantity, risk budget, or order instructions.
 - `DecisionFeatureProjector` allowlists deterministic fields. Raw narrative, raw LLM JSON, arbitrary graph handles, and unrestricted queries are structurally unreachable from the trading hot path.
-- The improvement loop is offline. High-impact semantic changes always require human approval; an author cannot approve its own proposal.
+- Unknown or unapproved feature keys are excluded by each strategy's positive allowlist; the plan never requires every producer key to be allowlisted somewhere.
+- `RiskOverlaySet` replaces the skipped legacy `ExposureVector` and may only tighten or veto risk.
+- The improvement loop is offline. High-impact semantic changes always require human approval; an author cannot approve its own proposal. Role identities must be independent where required, but distinct model IDs are not mandatory.
+- Semantic promotion never activates decision features. Economic influence requires an immutable `DecisionFeatureActivation` and cannot skip `SHADOW → PAPER_CANARY → PAPER_ACTIVE` or the later `LIVE_CANARY → LIVE_ACTIVE` transition.
+- Historical LLM evaluation runs retrieval/no-retrieval/masked contamination probes; contaminated cells are non-promotable.
+- There is no universal `occurred_at <= published_at` rule. Eligibility is based on actual availability at the cutoff.
+- The migration chain is single-headed and explicit: `20260721_0001_event_log → 20260721_0002_ontology_release → 20260721_0003_semantic_evidence → 20260721_0004_semantic_improvement → 20260721_0005_market_data → 20260721_0006_accounting → 20260721_0007_calibration`.
 - All implementation follows red-green-refactor, strict typing, deterministic tests, and one reviewable commit per task.
 
 ---
@@ -39,6 +50,7 @@ ontology/
   queries/competency/            # baseline and semantic competency queries
   queries/decision/              # approved decision query templates
   releases/                      # immutable release manifests
+  policies/                      # reasoning/support/feature policy releases
 src/trading_os/
   ontology/                      # release builder, compatibility, registry
   semantic/
@@ -47,8 +59,8 @@ src/trading_os/
     projections/                 # Fuseki and Neo4j adapters/builders
     retrieval/                   # relational champion and governed templates
     packets/                     # six bounded evidence-domain builders
-    reasoning/                   # hypotheses, belief builder, decision feature projector
-    improvement/                 # failures, diagnoses, experiments, promotion/rollback
+    reasoning/                   # hypotheses, belief builder, decision/risk projectors
+    improvement/                 # failures, experiments, promotion, activation/canary/rollback
   ports/                         # ontology/evidence/blob/semantic-graph protocol additions
 alembic/versions/                # append-only evidence and improvement schemas
 config/semantic/                 # frozen admission, query, evaluation, and promotion policy
@@ -60,6 +72,57 @@ tests/
   contract/semantic/             # port and graph projection contracts
   integration/semantic/          # Postgres/Fuseki/Neo4j snapshot equivalence
 ```
+
+## Normative Post-Review Task Amendments
+
+The amendments in this section are acceptance criteria for the numbered tasks below. When an
+abbreviated example later in the plan omits a field or uses an older name, this section controls.
+An implementation task is not complete until its amendment tests pass.
+
+| Task | Required amendment | Required proof |
+|---|---|---|
+| 1 | Version every meaning-bearing artifact: `OntologyRelease`, `QueryPackRelease`, `ReasoningPolicyRelease` (including hypothesis support rules), and `FeaturePolicyRelease`. The ontology compatibility contract hashes modules, SHACL shapes, mappings, bounded inference rules, and the canonical IRI scheme. | Changing any one artifact changes its release ID; changing an IRI rule, mapping, or inference rule without the required compatibility/migration declaration fails publication. Registry repeats the author/approver separation check. |
+| 2 | Use typed `LegalEntityId`, `IssuerRoleId`, `SecurityId`, `ListingId`, `VenueId`, and `TickerAliasId`; typed crosswalks; temporal, venue-scoped aliases; and one validating `CanonicalIriEncoder`. Model actual availability with `AvailabilityState`; do not impose a universal occurred-before-published rule. | Same ticker on two venues and ticker reuse over time resolve without overwrite; malformed IDs cannot become `URIRef`s; a restatement may occur after publication while remaining cutoff-safe. |
+| 3 | Persist source-origin clusters and extraction activity references alongside append-only evidence, so independence checks use ledger facts rather than caller-supplied strings. | Two documents from one syndicated origin count once; a correction appends and supersedes; all UPDATE/DELETE attempts fail. Migration has `down_revision = "20260721_0002"`. |
+| 4 | Keep the ordinary snapshot-scoped relational retriever independent and permanent. It is the champion, operational fallback, and control arm for every differential evaluation. | It runs with Fuseki, Neo4j, and all LLM services unavailable and produces a sealed retrieval receipt. |
+| 5 | Build RDF only with the final precomputed `SemanticSnapshotId`, the `urn:trading-os:ontology#` vocabulary, and IDs encoded by `CanonicalIriEncoder`. Runtime credentials are query-only; builder credentials exist only in the offline build job. | SHACL targets the exact emitted predicates; malformed IDs fail before serialization; runtime Graph Store writes are denied. |
+| 6 | Create `semantic/projections/neo4j.py` without modifying the skipped Trading OS Task 15 file. Stamp every node/relationship with the final snapshot ID and apply the same offline-builder/runtime-reader credential split. | A fresh checkout that executed only Trading OS Tasks 1–14 can implement this task; runtime Cypher writes are denied. |
+| 7 | Compute `SemanticSnapshotId = SHA256(canonical(SemanticContentManifest))` before either graph projection. After builds, compare Postgres/RDF/Neo4j assertion and entailment fingerprints and issue a separate immutable `SemanticProjectionReceipt`. Only a snapshot with a sealed receipt is queryable. | No preliminary snapshot-ID field exists; the same final ID is present in the manifest, graph IRI, Neo4j stamps, and receipt; unsealed or mismatched projections fail closed. |
+| 8 | Replace flat strings/dicts with `CanonicalIdentityPort`, `IdentityCrosswalkPort`, and temporal `AliasResolutionPort`. Admission derives independent-source counts from persisted origin clusters. | Colliding aliases return explicit candidates; no dictionary overwrite or automatic fuzzy merge is possible; caller-supplied independence counts are ignored. |
+| 9 | Bind every request and cache key to data snapshot, semantic snapshot, projection receipt, ontology release, query-pack release, and cutoff. Emit an immutable `RetrievalReceipt`. Normalize timeout, transport, HTTP, decode, schema, snapshot-mismatch, and projection-integrity errors into a closed semantic error taxonomy. | Cache reuse fails when any binding differs; fallback occurs only for a declared equivalent relational template; otherwise the query fails closed. |
+| 10–11 | Every `EvidencePacket` carries supporting and refuting `ObservationId`s plus typed `Decimal` numeric features. Source text and arbitrary LLM output never enter a packet. | A packet cannot be constructed from unsupported scalar values; provenance reaches its sealed retrieval receipt and observations. |
+| 12 | Evaluate hypotheses through a versioned `HypothesisSupportRuleRelease`, not packet presence alone. Produce both `DecisionFeatureSet` and tighten-only `RiskOverlaySet`; a versioned `DeterministicStrategyPolicy` is the sole adapter from activated decision features to `HotPathCandidate`. | Conflicting observation sets produce `CONTESTED`; missing requirements produce `INSUFFICIENT`; unknown feature keys are dropped; every risk multiplier is in `[0, 1]`; the adapter remains deterministic. |
+| 13 | Compare relational/RDF/Neo4j paths on frozen cases with a declared primary metric, minimum material effect, multiplicity correction, and fixed retirement horizon. Historical LLM cells run retrieval, no-retrieval, and masked-knowledge probes and record model knowledge-cutoff metadata. | Contaminated cells are excluded from promotion; safety failures, corrected significance failures, or effect-size failures block promotion. |
+| 14 | Use a closed `RootCauseClass`. Keep semantic release promotion separate from immutable `DecisionFeatureActivation` states: `DISABLED`, `SHADOW`, `PAPER_CANARY`, `PAPER_ACTIVE`, `LIVE_CANARY`, `LIVE_ACTIVE`. Canary scope, capital/risk caps, horizon, success gates, rollback target, and approver are sealed. | A promoted semantic release has no economic effect; state transitions cannot skip canary; cap breach or rollback trigger immediately returns to the prior safe activation. Migration has `down_revision = "20260721_0003"`. |
+| 15 | Bind the complete context before any cache return. `SemanticDecisionHandoff` returns an `ActivatedDecisionInputs` envelope containing the allowed `DecisionFeatureSet`, tighten-only `RiskOverlaySet`, activation ID/mode, and audit receipt; `SHADOW` returns empty economic inputs. | End-to-end tests prove relational degradation, semantic fail-closed behavior, activation isolation, deterministic replay, and the exact Trading OS Task 18/19/32/34/35/36 splice. |
+
+The separately versioned artifact types use a common frozen envelope:
+
+```python
+class ArtifactRelease(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    release_id: str                    # SHA-256 of canonical content
+    artifact_kind: ArtifactKind
+    semantic_version: str
+    content_hashes: Mapping[str, str]
+    compatibility_report_hash: str
+    authored_by: str
+    reviewed_by: str
+    approved_by: str
+
+
+class SemanticQueryBinding(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    data_snapshot_id: ValidatedDataSnapshotId
+    semantic_snapshot_id: SemanticSnapshotId
+    projection_receipt_id: SemanticProjectionReceiptId
+    ontology_release_id: OntologyReleaseId
+    query_pack_release_id: QueryPackReleaseId
+    decision_cutoff: datetime
+```
+
+Do not collapse these release IDs into the ontology release. Their independent histories are what
+make an old decision exactly replayable after query, support-rule, or feature-policy evolution.
 
 ---
 
@@ -95,6 +158,11 @@ tests/
 - Create: `ontology/mappings/prov-o.ttl`
 - Create: `ontology/mappings/owl-time.ttl`
 - Create: `ontology/mappings/identifiers.ttl`
+- Create: `ontology/policies/canonical-iri-scheme-v1.json`
+- Create: `ontology/policies/inference/approved-owl-rl-v1.ttl`
+- Create: `ontology/policies/query-pack-1.0.0.json`
+- Create: `ontology/policies/reasoning-policy-1.0.0.json`
+- Create: `ontology/policies/feature-policy-1.0.0.json`
 - Create: `ontology/releases/1.0.0.json`
 - Create: `src/trading_os/ontology/models.py`
 - Create: `src/trading_os/ontology/compatibility.py`
@@ -102,14 +170,19 @@ tests/
 - Create: `src/trading_os/ontology/registry.py`
 - Modify: `src/trading_os/domain/events.py`
 - Modify: `src/trading_os/persistence/postgres_event_store.py`
-- Create: `alembic/versions/0002_ontology_release.py`
+- Create: `alembic/versions/20260721_0002_ontology_release.py`
 - Test: `tests/unit/semantic/test_ontology_release.py`
 - Test: `tests/unit/semantic/test_ontology_compatibility.py`
 - Test: `tests/integration/semantic/test_ontology_registry.py`
 
 **Interfaces:**
 - Consumes: immutable ID/hash conventions from Trading OS Tasks 1–2.
-- Produces: `OntologyReleaseId`, `OntologyRelease`, `CompatibilityReport`, `build_release(root: Path, *, version: str, authored_by: str, reviewed_by: str, approved_by: str, migration_ref: str | None = None, previous_root: Path | None = None, previous_version: str | None = None) -> OntologyRelease`, `write_release_manifest(release, destination)`, and append-only `OntologyReleaseRegistry.publish(release: OntologyRelease) -> None`.
+- Produces: `OntologyReleaseId`, `QueryPackReleaseId`, `ReasoningPolicyReleaseId`,
+  `FeaturePolicyReleaseId`, their immutable release envelopes, `CompatibilityReport`,
+  `build_release(root: Path, *, version: str, authored_by: str, reviewed_by: str, approved_by: str,
+  migration_ref: str | None = None, previous_root: Path | None = None,
+  previous_version: str | None = None) -> OntologyRelease`, `write_release_manifest(...)`, and
+  append-only artifact registries.
 
 - [ ] **Step 1: Write release reproducibility and validation tests**
 
@@ -174,6 +247,17 @@ def test_breaking_change_requires_major_release() -> None:
         check_compatibility(
             Path("tests/fixtures/ontology/compatibility/v1"),
             Path("tests/fixtures/ontology/compatibility/breaking"),
+            previous_version="1.2.0",
+            new_version="1.3.0",
+        )
+
+
+@pytest.mark.parametrize("changed_artifact", ["breaking-mapping", "breaking-shape", "breaking-inference", "breaking-iri-scheme"])
+def test_breaking_meaning_artifact_requires_major_release(changed_artifact: str) -> None:
+    with pytest.raises(BreakingReleaseVersion):
+        check_compatibility(
+            Path("tests/fixtures/ontology/compatibility/v1"),
+            Path(f"tests/fixtures/ontology/compatibility/changed-{changed_artifact}"),
             previous_version="1.2.0",
             new_version="1.3.0",
         )
@@ -516,6 +600,8 @@ class OntologyRelease(BaseModel):
     mapping_hashes: dict[str, Sha256]
     shapes_hash: Sha256
     inference_ruleset_hash: Sha256
+    canonical_iri_scheme_hash: Sha256
+    semantic_contract_hash: Sha256
     validation_report_hash: Sha256
     compatibility_report_hash: Sha256
     migration_ref: str | None
@@ -540,6 +626,7 @@ class OntologyReleasePublished(BaseModel):
 ```python
 # src/trading_os/ontology/compatibility.py
 import hashlib
+from decimal import Decimal
 import json
 from pathlib import Path
 
@@ -566,9 +653,20 @@ SHAPE_PREDICATES = frozenset((SH.minCount, SH.maxCount, SH.datatype, SH["class"]
 
 def _load(root: Path) -> Graph:
     graph = Graph()
-    for path in sorted((*root.glob("modules/*.ttl"), *root.glob("shapes/*.ttl"))):
+    for path in sorted(
+        (*root.glob("modules/*.ttl"), *root.glob("shapes/*.ttl"), *root.glob("mappings/*.ttl"))
+    ):
         graph.parse(path, format="turtle")
     return to_canonical_graph(graph)
+
+
+def _meaning_artifacts(root: Path) -> dict[str, str]:
+    paths = sorted((*root.glob("mappings/*"), *root.glob("policies/**/*")))
+    return {
+        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in paths
+        if path.is_file()
+    }
 
 
 def _major(version: str) -> int:
@@ -597,10 +695,19 @@ def check_compatibility(
         for triple in current
         if triple[1] in SCHEMA_PREDICATES | SHAPE_PREDICATES
     }
+    previous_artifacts = _meaning_artifacts(previous_root)
+    current_artifacts = _meaning_artifacts(new_root)
+    breaking_artifact_changes = classify_breaking_artifact_changes(
+        previous_root=previous_root,
+        new_root=new_root,
+        previous_hashes=previous_artifacts,
+        new_hashes=current_artifacts,
+    )
     changes = tuple(
         sorted(
             [f"removed-term:{subject}:{term_type}" for subject, term_type in removed_terms]
             + [f"changed-constraint:{item}" for item in previous_constraints ^ current_constraints]
+            + [f"breaking-artifact:{path}" for path in breaking_artifact_changes]
         )
     )
     if changes and _major(new_version) <= _major(previous_version):
@@ -656,6 +763,8 @@ def build_release(
     modules = sorted(root.glob("modules/*.ttl"))
     mappings = sorted(root.glob("mappings/*.ttl"))
     shapes = sorted(root.glob("shapes/*.ttl"))
+    inference_rules = sorted(root.glob("policies/inference/*.ttl"))
+    iri_scheme = root / "policies/canonical-iri-scheme-v1.json"
     graph = Graph()
     shape_graph = Graph()
     for path in modules:
@@ -676,6 +785,10 @@ def build_release(
         raise OntologyValidationError(str(report.serialize(format="turtle")))
     module_hashes = {str(path.relative_to(root)): _hash(path.read_bytes()) for path in modules}
     mapping_hashes = {str(path.relative_to(root)): _hash(path.read_bytes()) for path in mappings}
+    inference_ruleset_hash = _hash(
+        b"".join(path.read_bytes() for path in inference_rules)
+    )
+    canonical_iri_scheme_hash = _hash(iri_scheme.read_bytes())
     shape_bytes = _canonical_ntriples(shape_graph)
     validation_report_hash = _hash(_canonical_ntriples(report))
     if (previous_root is None) != (previous_version is None):
@@ -697,6 +810,8 @@ def build_release(
             "modules": module_hashes,
             "mappings": mapping_hashes,
             "shapes": _hash(shape_bytes),
+            "inference_ruleset": inference_ruleset_hash,
+            "canonical_iri_scheme": canonical_iri_scheme_hash,
             "validation_report": validation_report_hash,
             "compatibility": compatibility_hash,
             "migration_ref": migration_ref,
@@ -714,7 +829,21 @@ def build_release(
         module_hashes=module_hashes,
         mapping_hashes=mapping_hashes,
         shapes_hash=_hash(shape_bytes),
-        inference_ruleset_hash=_hash(b"rdfs+approved-owl-rl-v1"),
+        inference_ruleset_hash=inference_ruleset_hash,
+        canonical_iri_scheme_hash=canonical_iri_scheme_hash,
+        semantic_contract_hash=_hash(
+            json.dumps(
+                {
+                    "modules": module_hashes,
+                    "mappings": mapping_hashes,
+                    "shapes": _hash(shape_bytes),
+                    "inference": inference_ruleset_hash,
+                    "iri_scheme": canonical_iri_scheme_hash,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ),
         validation_report_hash=validation_report_hash,
         compatibility_report_hash=compatibility_hash,
         migration_ref=migration_ref,
@@ -781,6 +910,8 @@ class OntologyReleaseRegistry:
         self._events = events
 
     async def publish(self, release: OntologyRelease) -> None:
+        if release.authored_by == release.approved_by:
+            raise ValueError("artifact author cannot approve its own release")
         event = EventEnvelope.new(
             stream_id="ontology:releases",
             event_type=EventType.ONTOLOGY_RELEASE_PUBLISHED,
@@ -859,7 +990,8 @@ async def append_in_transaction(
 ```
 
 `append()` keeps its public contract: it opens a transaction and delegates to
-`append_in_transaction`. `0002_ontology_release.py` creates the `ontology_release` table shown by
+`append_in_transaction`. `20260721_0002_ontology_release.py` declares `revision = "20260721_0002"`
+and `down_revision = "20260721_0001"`, and creates the `ontology_release` table shown by
 `OntologyReleaseRow`, plus the same UPDATE/DELETE rejection trigger used for the evidence tables.
 
 - [ ] **Step 4: Verify release, type, and container configuration**
@@ -875,7 +1007,7 @@ Expected: unit/integration tests PASS, mypy exits 0, and compose configuration e
 - [ ] **Step 5: Commit**
 
 ```bash
-git add pyproject.toml uv.lock compose.yaml infra/fuseki ontology src/trading_os/ontology src/trading_os/domain/events.py src/trading_os/persistence/postgres_event_store.py alembic/versions/0002_ontology_release.py tests/fixtures/ontology tests/unit/semantic/test_ontology_release.py tests/unit/semantic/test_ontology_compatibility.py tests/integration/semantic/test_ontology_registry.py
+git add pyproject.toml uv.lock compose.yaml infra/fuseki ontology src/trading_os/ontology src/trading_os/domain/events.py src/trading_os/persistence/postgres_event_store.py alembic/versions/20260721_0002_ontology_release.py tests/fixtures/ontology tests/unit/semantic/test_ontology_release.py tests/unit/semantic/test_ontology_compatibility.py tests/integration/semantic/test_ontology_registry.py
 git commit -m "feat: publish immutable ontology releases"
 ```
 
@@ -883,6 +1015,7 @@ git commit -m "feat: publish immutable ontology releases"
 
 **Files:**
 - Create: `src/trading_os/semantic/models/identity.py`
+- Create: `src/trading_os/semantic/models/iri.py`
 - Create: `src/trading_os/semantic/models/time.py`
 - Create: `src/trading_os/semantic/models/evidence.py`
 - Create: `src/trading_os/semantic/models/licensing.py`
@@ -891,7 +1024,11 @@ git commit -m "feat: publish immutable ontology releases"
 
 **Interfaces:**
 - Consumes: `OntologyReleaseId` from Task 1 and UUID value-object convention from Trading OS Task 2.
-- Produces: `LegalEntityId`, `SecurityId`, `ListingId`, `SourceRecord`, `EvidenceSpan`, `Observation`, `Claim`, `AdmissionState`, `AdmissionDecision`, `LicencePolicy`, and `AvailabilityWindow`.
+- Produces: typed `LegalEntityId`, `IssuerRoleId`, `SecurityId`, `ListingId`, `VenueId`,
+  `TickerAliasId`, `CanonicalIdentityKey`, `IdentityCrosswalk`, `TemporalAlias`, validating
+  `CanonicalIriEncoder`, `SourceRecord`, `EvidenceSpan`, typed-numeric `Observation`, `Claim`,
+  `AdmissionState`, `AdmissionDecision`, `LicencePolicy`, `AvailabilityState`, and
+  `AvailabilityWindow`.
 
 - [ ] **Step 1: Write strict identity and temporal tests**
 
@@ -901,11 +1038,22 @@ import pytest
 from pydantic import ValidationError
 
 from trading_os.semantic.models.identity import ListingIdentity, SecurityId
+from trading_os.semantic.models.iri import CanonicalIriEncoder
 
 
 def test_ticker_requires_a_validity_interval() -> None:
     with pytest.raises(ValidationError):
         ListingIdentity.model_validate({"security_id": str(SecurityId.new()), "ticker": "INFY"})
+
+
+def test_same_ticker_can_exist_on_two_venues_without_overwrite(alias_registry) -> None:
+    candidates = alias_registry.resolve("ABC", at=DECISION_CUTOFF)
+    assert {candidate.venue_id.value for candidate in candidates} == {"XNSE", "XBOM"}
+
+
+def test_canonical_iri_encoder_rejects_untyped_or_malformed_ids() -> None:
+    with pytest.raises(ValueError):
+        CanonicalIriEncoder().encode_untyped("../../not-an-id")
 ```
 
 ```python
@@ -916,16 +1064,28 @@ import pytest
 from pydantic import ValidationError
 
 from trading_os.semantic.models.licensing import LicencePolicy, PermittedTransformation
-from trading_os.semantic.models.time import AvailabilityWindow
+from trading_os.semantic.models.time import AvailabilityState, AvailabilityWindow
 
 
 def test_received_time_cannot_precede_publication() -> None:
     with pytest.raises(ValidationError):
         AvailabilityWindow(
+            state=AvailabilityState.KNOWN,
             published_at=datetime(2026, 7, 21, 12, tzinfo=UTC),
             received_at=datetime(2026, 7, 21, 11, tzinfo=UTC),
             recorded_at=datetime(2026, 7, 21, 13, tzinfo=UTC),
         )
+
+
+def test_advance_announcement_may_precede_occurrence() -> None:
+    window = AvailabilityWindow(
+        state=AvailabilityState.KNOWN,
+        occurred_at=datetime(2026, 8, 1, tzinfo=UTC),
+        published_at=datetime(2026, 7, 21, 12, tzinfo=UTC),
+        received_at=datetime(2026, 7, 21, 12, 1, tzinfo=UTC),
+        recorded_at=datetime(2026, 7, 21, 12, 2, tzinfo=UTC),
+    )
+    assert window.occurred_at > window.published_at
 
 
 def test_redistribution_requires_explicit_permission() -> None:
@@ -950,6 +1110,7 @@ Expected: FAIL during collection on missing `trading_os.semantic.models`.
 ```python
 # src/trading_os/semantic/models/identity.py
 from datetime import datetime
+from enum import StrEnum
 from typing import Self
 from uuid import UUID, uuid4
 
@@ -968,6 +1129,10 @@ class LegalEntityId(UUIDIdentity):
     pass
 
 
+class IssuerRoleId(UUIDIdentity):
+    pass
+
+
 class SecurityId(UUIDIdentity):
     pass
 
@@ -976,12 +1141,36 @@ class ListingId(UUIDIdentity):
     pass
 
 
+class VenueId(RootModel[str]):
+    model_config = ConfigDict(frozen=True)
+
+
+class TickerAliasId(UUIDIdentity):
+    pass
+
+
+class EntityKind(StrEnum):
+    LEGAL_ENTITY = "legal_entity"
+    ISSUER_ROLE = "issuer_role"
+    SECURITY = "security"
+    LISTING = "listing"
+    VENUE = "venue"
+    TICKER_ALIAS = "ticker_alias"
+
+
+class CanonicalIdentityKey(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    entity_kind: EntityKind
+    canonical_id: str
+
+
 class ListingIdentity(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     listing_id: ListingId
     security_id: SecurityId
-    venue_mic: str
-    ticker: str
+    venue_id: VenueId
+    ticker_alias_id: TickerAliasId
+    normalized_ticker: str
     valid_from: datetime
     valid_to: datetime | None = None
 
@@ -992,18 +1181,54 @@ class ListingIdentity(BaseModel):
         return self
 ```
 
+`IdentityCrosswalk` and `TemporalAlias` are append-only many-to-many records. Each crosswalk types
+both endpoint kinds and records source authority, evidence IDs, review state, and a validity
+interval. Each alias records alias kind, normalized value, optional venue, and a half-open validity
+interval. Resolution returns a tuple of candidates and never stores aliases in a value-keyed dict.
+
+```python
+# src/trading_os/semantic/models/iri.py
+from urllib.parse import quote
+
+from rdflib import URIRef
+
+from trading_os.semantic.models.identity import CanonicalIdentityKey
+
+
+class CanonicalIriEncoder:
+    _BASE = "urn:trading-os:entity"
+
+    def encode(self, key: CanonicalIdentityKey) -> URIRef:
+        value = key.canonical_id.strip()
+        if not value or value != key.canonical_id or any(c in value for c in ("/", "#", "..")):
+            raise ValueError("canonical ID is not valid for IRI encoding")
+        return URIRef(f"{self._BASE}:{key.entity_kind.value}:{quote(value, safe='')}")
+
+    def canonical_string(self, key: CanonicalIdentityKey) -> str:
+        self.encode(key)
+        return f"{key.entity_kind.value}:{key.canonical_id}"
+```
+
 ```python
 # src/trading_os/semantic/models/time.py
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
 
+class AvailabilityState(StrEnum):
+    KNOWN = "known"
+    UNKNOWN = "unknown"
+    INCONSISTENT = "inconsistent"
+
+
 class AvailabilityWindow(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
+    state: AvailabilityState
     occurred_at: datetime | None = None
-    published_at: datetime
-    received_at: datetime
+    published_at: datetime | None = None
+    received_at: datetime | None = None
     recorded_at: datetime
     valid_from: datetime | None = None
     valid_to: datetime | None = None
@@ -1011,8 +1236,11 @@ class AvailabilityWindow(BaseModel):
 
     @model_validator(mode="after")
     def ordered(self) -> "AvailabilityWindow":
-        if not self.published_at <= self.received_at <= self.recorded_at:
-            raise ValueError("publication, receipt, and record times must be ordered")
+        if self.state is AvailabilityState.KNOWN:
+            if self.published_at is None or self.received_at is None:
+                raise ValueError("known availability requires publication and receipt times")
+            if not self.published_at <= self.received_at <= self.recorded_at:
+                raise ValueError("publication, receipt, and record times must be ordered")
         if self.valid_from and self.valid_to and self.valid_from >= self.valid_to:
             raise ValueError("valid interval must be half-open and non-empty")
         return self
@@ -1021,6 +1249,7 @@ class AvailabilityWindow(BaseModel):
 ```python
 # src/trading_os/semantic/models/evidence.py
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -1059,10 +1288,10 @@ class EvidenceSpan(BaseModel):
 class Claim(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     claim_id: UUID
-    subject_id: str
+    subject_key: CanonicalIdentityKey
     subject_type_iri: str
     predicate_iri: str
-    object_id: str
+    object_key: CanonicalIdentityKey
     object_type_iri: str
     evidence_spans: tuple[EvidenceSpan, ...]
     supersedes_claim_id: UUID | None = None
@@ -1078,7 +1307,7 @@ class Observation(BaseModel):
     method_id: str
     method_version: str
     unit_iri: str
-    value_text: str
+    numeric_value: Decimal
     availability: AvailabilityWindow
 
 
@@ -1105,8 +1334,8 @@ class AdmissionDecision(BaseModel):
         )
 ```
 
-Keep numeric parsing out of `Observation`; domain evaluators parse `value_text` using the declared
-unit and method version.
+Parse vendor text at the ingestion boundary. `Observation.numeric_value` remains a typed `Decimal`
+paired with its unit and method version; raw numeric strings never cross into reasoning packets.
 
 ```python
 # src/trading_os/semantic/models/licensing.py
@@ -1160,14 +1389,17 @@ git commit -m "feat: model semantic identity time and evidence"
 - Create: `src/trading_os/semantic/evidence/blob_store.py`
 - Create: `src/trading_os/semantic/evidence/licensed_reader.py`
 - Create: `src/trading_os/semantic/evidence/ledger.py`
-- Create: `alembic/versions/0003_semantic_evidence.py`
+- Create: `alembic/versions/20260721_0003_semantic_evidence.py`
 - Create: `tests/unit/semantic/test_source_blob.py`
 - Create: `tests/unit/semantic/test_licensed_source_reader.py`
 - Create: `tests/integration/semantic/test_evidence_ledger.py`
 
 **Interfaces:**
 - Consumes: Task 2 evidence models and SQLAlchemy session factory from Trading OS Task 7.
-- Produces: `SourceBlobPort.put/get`, `LicensedSourceReader.read(request)`, `EvidenceLedgerPort.append_claim`, `append_admission`, `claims_as_of`, and content-addressed filesystem/Postgres adapters.
+- Produces: `SourceBlobPort.put/get`, `LicensedSourceReader.read(request)`,
+  `EvidenceLedgerPort.append_claim`, `append_admission`, `append_extraction_activity`,
+  `append_source_origin_membership`, `origin_clusters_for_claim`, `claims_as_of`, and
+  content-addressed filesystem/Postgres adapters.
 
 - [ ] **Step 1: Write immutability and as-of tests**
 
@@ -1221,6 +1453,14 @@ async def test_correction_appends_and_preserves_historical_view(evidence_ledger,
     after = await evidence_ledger.claims_as_of(correction.availability.recorded_at)
     assert [item.claim_id for item in before] == [original_claim.claim_id]
     assert correction.claim_id in {item.claim_id for item in after}
+
+
+async def test_syndicated_sources_share_one_persisted_origin_cluster(
+    evidence_ledger,
+    syndicated_claim,
+) -> None:
+    clusters = await evidence_ledger.origin_clusters_for_claim(syndicated_claim.claim_id)
+    assert clusters == (syndicated_claim.shared_origin_cluster_id,)
 ```
 
 - [ ] **Step 2: Run tests and observe missing ports/adapters**
@@ -1253,6 +1493,9 @@ class EvidenceLedgerPort(Protocol):
     async def append_source(self, source: SourceRecord) -> None: ...
     async def append_claim(self, claim: Claim) -> None: ...
     async def append_admission(self, decision: AdmissionDecision) -> None: ...
+    async def append_extraction_activity(self, activity: ExtractionActivity) -> None: ...
+    async def append_source_origin_membership(self, membership: SourceOriginMembership) -> None: ...
+    async def origin_clusters_for_claim(self, claim_id: UUID) -> tuple[str, ...]: ...
     async def claims_as_of(self, cutoff: datetime) -> tuple[Claim, ...]: ...
     async def admitted_claims_as_of(self, cutoff: datetime) -> tuple[Claim, ...]: ...
 ```
@@ -1334,8 +1577,10 @@ class LicensedSourceReader:
         return await self._blobs.get(request.content_hash)
 ```
 
-Migration `0003_semantic_evidence.py` creates insert-only `source_record`, `observation`, `claim`,
-`evidence_span`, `admission_decision`, `identity_candidate`, and `supersession` tables. Add database
+Migration `20260721_0003_semantic_evidence.py` declares `revision = "20260721_0003"` and
+`down_revision = "20260721_0002"`, then creates insert-only `source_record`, `observation`, `claim`,
+`evidence_span`, `extraction_activity`, `source_origin_cluster`, `source_origin_membership`,
+`admission_decision`, `identity_candidate`, and `supersession` tables. Add database
 triggers that reject UPDATE and DELETE for these tables. Repository queries require an explicit
 cutoff and resolve supersessions without deleting prior records.
 
@@ -1483,7 +1728,7 @@ Expected: all tests PASS, including rejected UPDATE/DELETE integration fixtures.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/trading_os/ports src/trading_os/semantic/evidence alembic/versions/0003_semantic_evidence.py tests/unit/semantic/test_source_blob.py tests/unit/semantic/test_licensed_source_reader.py tests/integration/semantic/test_evidence_ledger.py
+git add src/trading_os/ports src/trading_os/semantic/evidence alembic/versions/20260721_0003_semantic_evidence.py tests/unit/semantic/test_source_blob.py tests/unit/semantic/test_licensed_source_reader.py tests/integration/semantic/test_evidence_ledger.py
 git commit -m "feat: persist immutable semantic evidence"
 ```
 
@@ -1623,7 +1868,7 @@ def bounded_relational_paths(
 ) -> tuple[EvidencePath, ...]:
     by_subject: dict[str, list[Claim]] = {}
     for claim in claims:
-        by_subject.setdefault(claim.subject_id, []).append(claim)
+        by_subject.setdefault(iri_encoder.canonical_string(claim.subject_key), []).append(claim)
     frontier = [(target, tuple()) for target in targets]
     results: list[EvidencePath] = []
     for depth in range(1, min(maximum_depth, 2) + 1):
@@ -1633,13 +1878,13 @@ def bounded_relational_paths(
                 new_path = path + (claim,)
                 results.append(
                     EvidencePath(
-                        result_id=claim.object_id,
+                        result_id=iri_encoder.canonical_string(claim.object_key),
                         assertion_ids=tuple(str(item.claim_id) for item in new_path),
                         motif_id="relational-direct" if depth == 1 else "relational-two-hop",
                         depth=depth,
                     )
                 )
-                next_frontier.append((claim.object_id, new_path))
+                next_frontier.append((iri_encoder.canonical_string(claim.object_key), new_path))
         frontier = next_frontier
     return tuple(results)
 
@@ -1714,8 +1959,11 @@ git commit -m "feat: add permanent relational reasoning champion"
 - Create: `tests/contract/semantic/test_fuseki_graph.py`
 
 **Interfaces:**
-- Consumes: admitted Task 2/3 records and Task 1 release.
-- Produces: `SemanticGraphPort`, `RdfProjectionBuilder.build(release, assertions, graph_iri)`, and read-only `FusekiSemanticGraph`.
+- Consumes: admitted Task 2/3 records, Task 1 release, and the final Task 7
+  `SemanticSnapshotId` computed from `SemanticContentManifest`.
+- Produces: `SemanticGraphPort`,
+  `RdfProjectionBuilder.build(release, assertions, *, snapshot_id) -> ProjectionFingerprintSet`,
+  and read-only `FusekiSemanticGraph`.
 
 - [ ] **Step 1: Write deterministic mapping and read-only contract tests**
 
@@ -1724,16 +1972,29 @@ git commit -m "feat: add permanent relational reasoning champion"
 from trading_os.semantic.projections.rdf_mapping import claim_to_quads
 
 
-def test_claim_mapping_includes_provenance_and_validity(admitted_claim) -> None:
-    quads = claim_to_quads(admitted_claim, graph_iri="urn:snapshot:test")
+def test_claim_mapping_includes_provenance_and_validity(admitted_claim, iri_encoder) -> None:
+    quads = claim_to_quads(
+        admitted_claim,
+        graph_iri="urn:snapshot:test",
+        iri_encoder=iri_encoder,
+    )
     predicates = {str(predicate) for _, predicate, _, _ in quads}
-    assert "urn:trading:assertionId" in predicates
+    assert "urn:trading-os:ontology#assertionId" in predicates
     assert "http://www.w3.org/ns/prov#wasDerivedFrom" in predicates
-    assert "urn:trading:receivedAt" in predicates
+    assert "urn:trading-os:ontology#receivedAt" in predicates
 
 
-def test_raw_source_content_is_never_projected(admitted_claim) -> None:
-    serialized = "\n".join(map(str, claim_to_quads(admitted_claim, graph_iri="urn:snapshot:test")))
+def test_raw_source_content_is_never_projected(admitted_claim, iri_encoder) -> None:
+    serialized = "\n".join(
+        map(
+            str,
+            claim_to_quads(
+                admitted_claim,
+                graph_iri="urn:snapshot:test",
+                iri_encoder=iri_encoder,
+            ),
+        )
+    )
     assert "ignore all previous instructions" not in serialized
     assert admitted_claim.evidence_spans[0].span_hash not in serialized
 ```
@@ -1742,6 +2003,11 @@ def test_raw_source_content_is_never_projected(admitted_claim) -> None:
 # tests/contract/semantic/test_fuseki_graph.py
 async def test_runtime_adapter_rejects_sparql_update(fuseki_graph) -> None:
     assert not hasattr(fuseki_graph, "update")
+
+
+async def test_runtime_credentials_cannot_write(runtime_fuseki_http_client, graph_store_url) -> None:
+    response = await runtime_fuseki_http_client.put(graph_store_url, content=b"<s> <p> <o> .")
+    assert response.status_code in {401, 403, 405}
 ```
 
 - [ ] **Step 2: Run and observe missing semantic graph modules**
@@ -1766,8 +2032,9 @@ class SemanticGraphPort(Protocol):
 ```
 
 `RdfProjectionBuilder` maps each admitted assertion to stable IRIs and a named graph, emits
-PROV-O-aligned derivation triples, time predicates, admission state, and source IDs, sorts N-Quads,
-and computes the projection hash before upload through a build-only Graph Store client. The runtime
+PROV-O-aligned derivation triples, time predicates, admission state, and source IDs, sorts canonical
+N-Triples for that explicitly bound named graph, and computes the graph-IRI-plus-content hash before
+upload through a build-only Graph Store client. The runtime
 adapter exposes SPARQL SELECT through reviewed templates only and has no update method.
 
 ```python
@@ -1810,19 +2077,24 @@ from rdflib import Literal, URIRef
 from rdflib.namespace import PROV, RDF, XSD
 
 
-def claim_to_quads(claim: Claim, *, graph_iri: str) -> tuple[tuple[URIRef, URIRef, object, URIRef], ...]:
+def claim_to_quads(
+    claim: Claim,
+    *,
+    graph_iri: str,
+    iri_encoder: CanonicalIriEncoder,
+) -> tuple[tuple[URIRef, URIRef, object, URIRef], ...]:
     assertion = URIRef(f"urn:assertion:{claim.claim_id}")
     graph = URIRef(graph_iri)
     base = (
-        (assertion, RDF.type, URIRef("urn:trading:AdmittedAssertion"), graph),
-        (assertion, URIRef("urn:trading:assertionId"), Literal(str(claim.claim_id)), graph),
-        (assertion, URIRef("urn:trading:subject"), URIRef(claim.subject_id), graph),
-        (assertion, URIRef("urn:trading:subjectType"), URIRef(claim.subject_type_iri), graph),
-        (assertion, URIRef("urn:trading:predicate"), URIRef(claim.predicate_iri), graph),
-        (assertion, URIRef("urn:trading:object"), URIRef(claim.object_id), graph),
-        (assertion, URIRef("urn:trading:objectType"), URIRef(claim.object_type_iri), graph),
-        (assertion, URIRef("urn:trading:admissionState"), Literal(claim.state.value), graph),
-        (assertion, URIRef("urn:trading:receivedAt"), Literal(claim.availability.received_at, datatype=XSD.dateTime), graph),
+        (assertion, RDF.type, URIRef("urn:trading-os:ontology#AdmittedAssertion"), graph),
+        (assertion, URIRef("urn:trading-os:ontology#assertionId"), Literal(str(claim.claim_id)), graph),
+        (assertion, URIRef("urn:trading-os:ontology#subject"), iri_encoder.encode(claim.subject_key), graph),
+        (assertion, URIRef("urn:trading-os:ontology#subjectType"), URIRef(claim.subject_type_iri), graph),
+        (assertion, URIRef("urn:trading-os:ontology#predicate"), URIRef(claim.predicate_iri), graph),
+        (assertion, URIRef("urn:trading-os:ontology#object"), iri_encoder.encode(claim.object_key), graph),
+        (assertion, URIRef("urn:trading-os:ontology#objectType"), URIRef(claim.object_type_iri), graph),
+        (assertion, URIRef("urn:trading-os:ontology#admissionState"), Literal(claim.state.value), graph),
+        (assertion, URIRef("urn:trading-os:ontology#receivedAt"), Literal(claim.availability.received_at, datatype=XSD.dateTime), graph),
     )
     provenance = tuple(
         (
@@ -1838,7 +2110,7 @@ def claim_to_quads(claim: Claim, *, graph_iri: str) -> tuple[tuple[URIRef, URIRe
         for item in (
             (
                 assertion,
-                URIRef("urn:trading:validFrom"),
+                URIRef("urn:trading-os:ontology#validFrom"),
                 Literal(claim.availability.valid_from, datatype=XSD.dateTime),
                 graph,
             )
@@ -1846,7 +2118,7 @@ def claim_to_quads(claim: Claim, *, graph_iri: str) -> tuple[tuple[URIRef, URIRe
             else None,
             (
                 assertion,
-                URIRef("urn:trading:validTo"),
+                URIRef("urn:trading-os:ontology#validTo"),
                 Literal(claim.availability.valid_to, datatype=XSD.dateTime),
                 graph,
             )
@@ -1890,17 +2162,23 @@ class RdfProjectionBuilder:
         self,
         release: OntologyRelease,
         assertions: tuple[Claim, ...],
-        graph_iri: str,
+        *,
+        snapshot_id: SemanticSnapshotId,
     ) -> str:
+        graph_iri = f"urn:trading-os:semantic-snapshot:{snapshot_id.value}"
         graph = Graph()
         for claim in sorted(assertions, key=lambda item: str(item.claim_id)):
-            for subject, predicate, object_, _ in claim_to_quads(claim, graph_iri=graph_iri):
+            for subject, predicate, object_, _ in claim_to_quads(
+                claim,
+                graph_iri=graph_iri,
+                iri_encoder=self._iri_encoder,
+            ):
                 graph.add((subject, predicate, object_))
         release_subject = URIRef(f"urn:ontology-release:{release.release_id.value}")
         graph.add(
             (
                 URIRef(graph_iri),
-                URIRef("urn:trading:builtFromOntologyRelease"),
+                URIRef("urn:trading-os:ontology#builtFromOntologyRelease"),
                 release_subject,
             )
         )
@@ -1940,7 +2218,7 @@ class FusekiSemanticGraph:
 
     async def select_assertion_ids(self, *, graph_iri: str) -> frozenset[str]:
         graph = URIRef(graph_iri).n3()
-        query = f"SELECT ?id WHERE {{ GRAPH {graph} {{ ?assertion <urn:trading:assertionId> ?id }} }} ORDER BY ?id"
+        query = f"SELECT ?id WHERE {{ GRAPH {graph} {{ ?assertion <urn:trading-os:ontology#assertionId> ?id }} }} ORDER BY ?id"
         response = await self._client.post(
             self._query_url,
             data={"query": query},
@@ -1956,13 +2234,13 @@ class FusekiSemanticGraph:
             "SELECT ?id ?subject ?subjectType ?predicate ?object ?objectType ?state "
             "?received ?validFrom ?validTo WHERE { "
             f"GRAPH {graph} {{ "
-            "?assertion <urn:trading:assertionId> ?id ; "
-            "<urn:trading:subject> ?subject ; <urn:trading:subjectType> ?subjectType ; "
-            "<urn:trading:predicate> ?predicate ; <urn:trading:object> ?object ; "
-            "<urn:trading:objectType> ?objectType ; <urn:trading:admissionState> ?state ; "
-            "<urn:trading:receivedAt> ?received . "
-            "OPTIONAL { ?assertion <urn:trading:validFrom> ?validFrom } "
-            "OPTIONAL { ?assertion <urn:trading:validTo> ?validTo } } } ORDER BY ?id"
+            "?assertion <urn:trading-os:ontology#assertionId> ?id ; "
+            "<urn:trading-os:ontology#subject> ?subject ; <urn:trading-os:ontology#subjectType> ?subjectType ; "
+            "<urn:trading-os:ontology#predicate> ?predicate ; <urn:trading-os:ontology#object> ?object ; "
+            "<urn:trading-os:ontology#objectType> ?objectType ; <urn:trading-os:ontology#admissionState> ?state ; "
+            "<urn:trading-os:ontology#receivedAt> ?received . "
+            "OPTIONAL { ?assertion <urn:trading-os:ontology#validFrom> ?validFrom } "
+            "OPTIONAL { ?assertion <urn:trading-os:ontology#validTo> ?validTo } } } ORDER BY ?id"
         )
         response = await self._client.post(
             self._query_url,
@@ -2026,13 +2304,12 @@ git commit -m "feat: build read-only rdf semantic projections"
 
 **Files:**
 - Modify: `src/trading_os/ports/graph.py`
-- Modify: `src/trading_os/kg/neo4j_store.py`
 - Create: `src/trading_os/semantic/projections/neo4j.py`
 - Create: `tests/unit/semantic/test_neo4j_mapping.py`
 - Create: `tests/contract/semantic/test_neo4j_projection.py`
 
 **Interfaces:**
-- Consumes: the same release/assertion batch as Task 5.
+- Consumes: the same release/assertion batch and final precomputed `SemanticSnapshotId` as Task 5.
 - Produces: `Neo4jProjectionBuilder.build(snapshot_id: str, rows: tuple[ProjectionRelationship, ...]) -> str`, `GraphStorePort.assertion_ids(snapshot_id: str)`, `GraphStorePort.projection_fingerprints(snapshot_id: str)`, and approved motif reads through Task 9 templates.
 
 - [ ] **Step 1: Write endpoint-type and independent-write tests**
@@ -2053,6 +2330,11 @@ def test_issuer_cannot_be_mapped_as_listing(issuer_claim) -> None:
 # tests/contract/semantic/test_neo4j_projection.py
 async def test_runtime_graph_exposes_no_generic_write(neo4j_graph) -> None:
     assert not hasattr(neo4j_graph, "execute_write")
+
+
+async def test_runtime_credentials_are_denied_cypher_writes(runtime_neo4j_driver) -> None:
+    with pytest.raises(Neo4jError):
+        await runtime_neo4j_driver.execute_query("CREATE (:ForbiddenRuntimeWrite)")
 ```
 
 - [ ] **Step 2: Run and observe absent projection builder**
@@ -2127,10 +2409,10 @@ def map_relationship(
         )
     return ProjectionRelationship(
         assertion_id=str(value.claim.claim_id),
-        source_id=value.claim.subject_id,
+        source_id=iri_encoder.canonical_string(value.claim.subject_key),
         source_type=value.source_type,
         predicate_iri=value.claim.predicate_iri,
-        target_id=value.claim.object_id,
+        target_id=iri_encoder.canonical_string(value.claim.object_key),
         target_type=value.target_type,
         valid_from=value.claim.availability.valid_from,
         valid_to=value.claim.availability.valid_to,
@@ -2151,6 +2433,8 @@ class Neo4jProjectionBuilder:
         self._driver = driver
 
     async def build(self, snapshot_id: str, rows: tuple[ProjectionRelationship, ...]) -> str:
+        if any(row.semantic_snapshot_id != snapshot_id for row in rows):
+            raise ProjectionTypeError("every row must carry the final semantic snapshot ID")
         payload = [
             row.model_dump(mode="python")
             | {"projection_key": projection_key(snapshot_id, row.assertion_id)}
@@ -2223,7 +2507,7 @@ Expected: all tests PASS; repeated builds produce identical assertion-ID sets.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/trading_os/ports/graph.py src/trading_os/kg/neo4j_store.py src/trading_os/semantic/projections/neo4j.py tests/unit/semantic/test_neo4j_mapping.py tests/contract/semantic/test_neo4j_projection.py
+git add src/trading_os/ports/graph.py src/trading_os/semantic/projections/neo4j.py tests/unit/semantic/test_neo4j_mapping.py tests/contract/semantic/test_neo4j_projection.py
 git commit -m "feat: project admitted semantics into neo4j"
 ```
 
@@ -2238,7 +2522,8 @@ git commit -m "feat: project admitted semantics into neo4j"
 
 **Interfaces:**
 - Consumes: Task 1 release, Task 3 cutoff-scoped assertions, Tasks 5/6 projections, and `ValidatedDataSnapshotId`.
-- Produces: `SemanticSnapshotId`, `SemanticSnapshot`, and `SemanticSnapshotBuilder.build(request)`.
+- Produces: `SemanticContentManifest`, final `SemanticSnapshotId`, logical `SemanticSnapshot`,
+  immutable `SemanticProjectionReceipt`, and `SemanticSnapshotBuilder.build(request)`.
 
 - [ ] **Step 1: Write mismatch rejection and reproducibility tests**
 
@@ -2256,6 +2541,18 @@ async def test_projection_mismatch_rejects_snapshot(snapshot_builder, mismatched
 
 async def test_identical_inputs_produce_identical_snapshot_id(snapshot_builder, valid_build_request) -> None:
     assert await snapshot_builder.build(valid_build_request) == await snapshot_builder.build(valid_build_request)
+
+
+async def test_final_id_is_stamped_into_both_projections(snapshot_builder, valid_build_request) -> None:
+    result = await snapshot_builder.build(valid_build_request)
+    assert result.snapshot.snapshot_id == result.receipt.semantic_snapshot_id
+    assert result.receipt.rdf_graph_iri.endswith(result.snapshot.snapshot_id)
+    assert result.receipt.neo4j_snapshot_id == result.snapshot.snapshot_id
+
+
+async def test_unsealed_snapshot_is_not_queryable(snapshot_registry, logical_snapshot) -> None:
+    with pytest.raises(ProjectionMismatch):
+        await snapshot_registry.require_queryable(logical_snapshot.snapshot_id)
 ```
 
 - [ ] **Step 2: Run and verify snapshot modules are absent**
@@ -2269,45 +2566,65 @@ Expected: FAIL on missing semantic snapshot modules.
 ```python
 # src/trading_os/semantic/models/snapshot.py
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
 
-class SemanticSnapshotBuildRequest(BaseModel):
+class SemanticContentManifest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    proposed_snapshot_id: str
     validated_data_snapshot_id: str
     ontology_release_id: str
     decision_cutoff: datetime
-    created_at: datetime
-    rdf_graph_iri: str
+    admitted_assertion_ids: tuple[str, ...]
     source_manifest_hash: str
     inference_ruleset_id: str
-    rdf_projection_hash: str
-    neo4j_projection_hash: str
     builder_version: str
-    validation_report_hash: str
 
 
 class SemanticSnapshot(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     snapshot_id: str
+    content_manifest: SemanticContentManifest
+    created_at: datetime
+
+
+class ProjectionSealStatus(StrEnum):
+    SEALED = "sealed"
+    REJECTED = "rejected"
+
+
+class SemanticProjectionReceipt(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    receipt_id: str
+    semantic_snapshot_id: str
+    status: ProjectionSealStatus
+    rdf_graph_iri: str
+    neo4j_snapshot_id: str
+    rdf_projection_hash: str
+    neo4j_projection_hash: str
+    assertion_fingerprint_hash: str
+    entailment_fixture_hash: str
+    validation_report_hash: str
+
+
+class SemanticSnapshotBuildRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
     validated_data_snapshot_id: str
     ontology_release_id: str
     decision_cutoff: datetime
     created_at: datetime
-    assertion_set_hash: str
     source_manifest_hash: str
     inference_ruleset_id: str
-    rdf_projection_hash: str
-    neo4j_projection_hash: str
     builder_version: str
-    validation_report_hash: str
 ```
 
-`SemanticSnapshotBuilder` compares assertion IDs and endpoint/type/validity tuples from Postgres,
-Fuseki, and Neo4j before hashing the sorted manifest. `ValidatedDataSnapshotManifest` replaces its
-bare KG edge-set field with the exact `SemanticSnapshotId`. No `latest()` accessor is added.
+`SemanticSnapshotBuilder` first reads eligible admitted assertions, canonicalizes the logical
+manifest, and computes the final snapshot ID. It passes that exact ID to both projection builders.
+Only after build completion does it compare assertion, endpoint/type/validity, and approved
+entailment-fixture fingerprints and append a projection receipt. `ValidatedDataSnapshotManifest`
+replaces its bare KG edge-set field with the exact `SemanticSnapshotId`. No `latest()` accessor is
+added.
 
 ```python
 # src/trading_os/semantic/projections/snapshot_builder.py
@@ -2315,7 +2632,13 @@ import hashlib
 
 import orjson
 
-from trading_os.semantic.models.snapshot import SemanticSnapshot, SemanticSnapshotBuildRequest
+from trading_os.semantic.models.snapshot import (
+    ProjectionSealStatus,
+    SemanticContentManifest,
+    SemanticProjectionReceipt,
+    SemanticSnapshot,
+    SemanticSnapshotBuildRequest,
+)
 from trading_os.semantic.projections.fingerprint import projection_fingerprint
 
 
@@ -2323,39 +2646,66 @@ class ProjectionMismatch(RuntimeError):
     pass
 
 
-def seal_semantic_manifest(
-    request: SemanticSnapshotBuildRequest,
-    *,
-    assertion_ids: frozenset[str],
-) -> SemanticSnapshot:
-    assertion_set_hash = hashlib.sha256("\n".join(sorted(assertion_ids)).encode()).hexdigest()
-    payload = request.model_dump(mode="json", exclude={"proposed_snapshot_id"}) | {
-        "assertion_set_hash": assertion_set_hash
-    }
-    snapshot_id = hashlib.sha256(orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)).hexdigest()
-    return SemanticSnapshot(
-        snapshot_id=snapshot_id,
-        assertion_set_hash=assertion_set_hash,
-        **request.model_dump(exclude={"proposed_snapshot_id"}),
-    )
+def _sha256(payload: object) -> str:
+    return hashlib.sha256(orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)).hexdigest()
 
 
 class SemanticSnapshotBuilder:
-    def __init__(self, ledger: EvidenceLedgerPort, rdf: SemanticGraphPort, graph: GraphStorePort) -> None:
+    def __init__(
+        self,
+        ledger,
+        ontology_registry,
+        relationship_mapper,
+        rdf_builder,
+        neo4j_builder,
+        rdf_reader,
+        neo4j_reader,
+        registry,
+    ) -> None:
         self._ledger = ledger
-        self._rdf = rdf
-        self._graph = graph
+        self._ontology_registry = ontology_registry
+        self._relationship_mapper = relationship_mapper
+        self._rdf_builder = rdf_builder
+        self._neo4j_builder = neo4j_builder
+        self._rdf_reader = rdf_reader
+        self._neo4j_reader = neo4j_reader
+        self._registry = registry
 
-    async def build(self, request: SemanticSnapshotBuildRequest) -> SemanticSnapshot:
+    async def build(self, request: SemanticSnapshotBuildRequest) -> SemanticSnapshotBuildResult:
         claims = await self._ledger.admitted_claims_as_of(request.decision_cutoff)
-        ledger_ids = frozenset(str(item.claim_id) for item in claims)
+        ledger_ids = tuple(sorted(str(item.claim_id) for item in claims))
+        ledger_id_set = frozenset(ledger_ids)
+        manifest = SemanticContentManifest(
+            validated_data_snapshot_id=request.validated_data_snapshot_id,
+            ontology_release_id=request.ontology_release_id,
+            decision_cutoff=request.decision_cutoff,
+            admitted_assertion_ids=ledger_ids,
+            source_manifest_hash=request.source_manifest_hash,
+            inference_ruleset_id=request.inference_ruleset_id,
+            builder_version=request.builder_version,
+        )
+        snapshot_id = _sha256(manifest.model_dump(mode="json"))
+        snapshot = SemanticSnapshot(
+            snapshot_id=snapshot_id,
+            content_manifest=manifest,
+            created_at=request.created_at,
+        )
+        await self._registry.append_logical(snapshot)
+        release = await self._ontology_registry.get_exact(request.ontology_release_id)
+        rdf_hash = await self._rdf_builder.build(release, claims, snapshot_id=snapshot_id)
+        relationships = self._relationship_mapper.map_all(
+            release=release,
+            claims=claims,
+            snapshot_id=snapshot_id,
+        )
+        neo4j_hash = await self._neo4j_builder.build(snapshot_id, relationships)
         ledger_fingerprints = frozenset(
             projection_fingerprint(
                 assertion_id=str(item.claim_id),
-                subject_id=item.subject_id,
+                subject_id=iri_encoder.canonical_string(item.subject_key),
                 subject_type_iri=item.subject_type_iri,
                 predicate_iri=item.predicate_iri,
-                object_id=item.object_id,
+                object_id=iri_encoder.canonical_string(item.object_key),
                 object_type_iri=item.object_type_iri,
                 admission_state=item.state.value,
                 received_at=item.availability.received_at,
@@ -2364,17 +2714,14 @@ class SemanticSnapshotBuilder:
             )
             for item in claims
         )
-        rdf_ids = await self._rdf.select_assertion_ids(graph_iri=request.rdf_graph_iri)
-        graph_ids = await self._graph.assertion_ids(snapshot_id=request.proposed_snapshot_id)
-        rdf_fingerprints = await self._rdf.select_projection_fingerprints(
-            graph_iri=request.rdf_graph_iri
-        )
-        graph_fingerprints = await self._graph.projection_fingerprints(
-            snapshot_id=request.proposed_snapshot_id
-        )
+        graph_iri = f"urn:trading-os:semantic-snapshot:{snapshot_id}"
+        rdf_ids = await self._rdf_reader.select_assertion_ids(graph_iri=graph_iri)
+        graph_ids = await self._neo4j_reader.assertion_ids(snapshot_id=snapshot_id)
+        rdf_fingerprints = await self._rdf_reader.select_projection_fingerprints(graph_iri=graph_iri)
+        graph_fingerprints = await self._neo4j_reader.projection_fingerprints(snapshot_id=snapshot_id)
         if (
-            ledger_ids != rdf_ids
-            or ledger_ids != graph_ids
+            ledger_id_set != rdf_ids
+            or ledger_id_set != graph_ids
             or ledger_fingerprints != rdf_fingerprints
             or ledger_fingerprints != graph_fingerprints
         ):
@@ -2388,7 +2735,28 @@ class SemanticSnapshotBuilder:
                     "neo4j_fingerprints": graph_fingerprints,
                 }
             )
-        return seal_semantic_manifest(request, assertion_ids=ledger_ids)
+        entailment_hash = await compare_approved_entailment_fixtures(
+            snapshot_id=snapshot_id,
+            rdf=self._rdf_reader,
+            graph=self._neo4j_reader,
+        )
+        receipt_payload = {
+            "semantic_snapshot_id": snapshot_id,
+            "rdf_projection_hash": rdf_hash,
+            "neo4j_projection_hash": neo4j_hash,
+            "assertion_fingerprint_hash": _sha256(sorted(ledger_fingerprints)),
+            "entailment_fixture_hash": entailment_hash,
+        }
+        receipt = SemanticProjectionReceipt(
+            receipt_id=_sha256(receipt_payload),
+            status=ProjectionSealStatus.SEALED,
+            rdf_graph_iri=graph_iri,
+            neo4j_snapshot_id=snapshot_id,
+            validation_report_hash=_sha256({"equivalent": True}),
+            **receipt_payload,
+        )
+        await self._registry.append_receipt(receipt)
+        return SemanticSnapshotBuildResult(snapshot=snapshot, receipt=receipt)
 ```
 
 - [ ] **Step 4: Verify unit and three-store integration equivalence**
@@ -2429,20 +2797,21 @@ git commit -m "feat: seal equivalent semantic snapshots"
 # tests/unit/semantic/test_identity_resolution.py
 def test_fuzzy_name_match_never_auto_merges(identity_resolver, fuzzy_only_record) -> None:
     result = identity_resolver.resolve(fuzzy_only_record)
-    assert result.canonical_id is None
+    assert result.canonical_key is None
     assert result.candidates
     assert result.requires_human_review is True
 ```
 
 ```python
 # tests/unit/semantic/test_claim_admission.py
-def test_syndicated_sources_count_as_one_origin(admission_policy, syndicated_claim) -> None:
-    decision = admission_policy.evaluate(syndicated_claim, cutoff=syndicated_claim.decision_cutoff)
+async def test_syndicated_sources_count_as_one_origin(admission_policy, syndicated_claim) -> None:
+    decision = await admission_policy.evaluate(syndicated_claim, cutoff=syndicated_claim.decision_cutoff)
     assert decision.independent_source_count == 1
 
 
-def test_received_after_cutoff_is_rejected(admission_policy, late_claim) -> None:
-    assert admission_policy.evaluate(late_claim, cutoff=late_claim.decision_cutoff).reason == "received_after_cutoff"
+async def test_received_after_cutoff_is_rejected(admission_policy, late_claim) -> None:
+    decision = await admission_policy.evaluate(late_claim, cutoff=late_claim.decision_cutoff)
+    assert decision.reason == "received_after_cutoff"
 ```
 
 - [ ] **Step 2: Run and observe missing admission components**
@@ -2471,14 +2840,14 @@ from pydantic import BaseModel, ConfigDict
 
 class IdentityCandidate(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    canonical_id: str
+    canonical_key: CanonicalIdentityKey
     method: str
     score: Decimal
 
 
 class IdentityResolution(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    canonical_id: str | None
+    canonical_key: CanonicalIdentityKey | None
     method: str
     candidates: tuple[IdentityCandidate, ...]
     requires_human_review: bool
@@ -2486,58 +2855,90 @@ class IdentityResolution(BaseModel):
 
 class IdentityInput(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    supplied_canonical_id: str | None
-    crosswalk_key: str | None
+    expected_kind: EntityKind
+    supplied_canonical_key: CanonicalIdentityKey | None
+    crosswalk_lookup: CrosswalkLookup | None
     normalized_alias: str
+    venue_id: VenueId | None
     observed_at: datetime
 
 
 class FuzzyCandidatePort(Protocol):
-    def find(self, normalized_alias: str) -> tuple[IdentityCandidate, ...]: ...
+    def find(self, value: IdentityInput) -> tuple[IdentityCandidate, ...]: ...
+
+
+class CanonicalIdentityPort(Protocol):
+    def exists(self, key: CanonicalIdentityKey) -> bool: ...
+
+
+class IdentityCrosswalkPort(Protocol):
+    def resolve(self, lookup: CrosswalkLookup, *, at: datetime) -> tuple[CanonicalIdentityKey, ...]: ...
+
+
+class AliasResolutionPort(Protocol):
+    def resolve(
+        self,
+        *,
+        kind: EntityKind,
+        normalized_alias: str,
+        venue_id: VenueId | None,
+        at: datetime,
+    ) -> tuple[TemporalAlias, ...]: ...
 
 
 class IdentityResolver:
     def __init__(
         self,
-        canonical_ids: frozenset[str],
-        crosswalks: dict[str, str],
-        valid_aliases: dict[str, tuple[str, datetime, datetime | None]],
+        canonical: CanonicalIdentityPort,
+        crosswalks: IdentityCrosswalkPort,
+        aliases: AliasResolutionPort,
         fuzzy_candidates: FuzzyCandidatePort,
     ) -> None:
-        self._canonical_ids = canonical_ids
+        self._canonical = canonical
         self._crosswalks = crosswalks
-        self._valid_aliases = valid_aliases
+        self._aliases = aliases
         self._fuzzy_candidates = fuzzy_candidates
 
     def resolve(self, value: IdentityInput) -> IdentityResolution:
-        if value.supplied_canonical_id in self._canonical_ids:
+        supplied = value.supplied_canonical_key
+        if supplied is not None and supplied.entity_kind is value.expected_kind and self._canonical.exists(supplied):
             return IdentityResolution(
-                canonical_id=value.supplied_canonical_id,
+                canonical_key=supplied,
                 method="canonical_id",
                 candidates=(),
                 requires_human_review=False,
             )
-        if value.crosswalk_key is not None and value.crosswalk_key in self._crosswalks:
+        if value.crosswalk_lookup is not None:
+            resolved = self._crosswalks.resolve(value.crosswalk_lookup, at=value.observed_at)
+        else:
+            resolved = ()
+        if len(resolved) == 1 and resolved[0].entity_kind is value.expected_kind:
             return IdentityResolution(
-                canonical_id=self._crosswalks[value.crosswalk_key],
+                canonical_key=resolved[0],
                 method="authoritative_crosswalk",
                 candidates=(),
                 requires_human_review=False,
             )
-        alias = self._valid_aliases.get(value.normalized_alias)
-        if alias is not None:
-            canonical_id, valid_from, valid_to = alias
-            if valid_from <= value.observed_at and (valid_to is None or value.observed_at < valid_to):
-                return IdentityResolution(
-                    canonical_id=canonical_id,
-                    method="valid_exact_alias",
-                    candidates=(),
-                    requires_human_review=False,
-                )
-        candidates = self._fuzzy_candidates.find(value.normalized_alias)
+        aliases = self._aliases.resolve(
+            kind=value.expected_kind,
+            normalized_alias=value.normalized_alias,
+            venue_id=value.venue_id,
+            at=value.observed_at,
+        )
+        if len(aliases) == 1:
+            return IdentityResolution(
+                canonical_key=aliases[0].canonical_key,
+                method="valid_exact_alias",
+                candidates=(),
+                requires_human_review=False,
+            )
+        candidates = tuple(
+            IdentityCandidate(canonical_key=item.canonical_key, method="ambiguous_exact_alias", score=Decimal("1"))
+            for item in aliases
+        ) or self._fuzzy_candidates.find(value)
         return IdentityResolution(
-            canonical_id=None,
-            method="fuzzy_candidate_only",
+            canonical_key=None,
+            method="candidate_only",
             candidates=candidates,
             requires_human_review=bool(candidates),
         )
@@ -2547,7 +2948,6 @@ class ClaimProposal(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     claim: Claim
     decision_cutoff: datetime
-    origin_cluster_ids: tuple[str, ...]
     endpoint_types_valid: bool
     shape_conforms: bool
     contradiction_ids: tuple[UUID, ...]
@@ -2574,9 +2974,10 @@ class AdmissionReason(StrEnum):
 
 
 class AdmissionPolicy:
-    def __init__(self, clock: ClockPort, reviewer_id: str) -> None:
+    def __init__(self, clock: ClockPort, reviewer_id: str, ledger: EvidenceLedgerPort) -> None:
         self._clock = clock
         self._reviewer_id = reviewer_id
+        self._ledger = ledger
 
     def _reject(self, proposal: ClaimProposal, reason: AdmissionReason) -> AdmissionDecision:
         return AdmissionDecision.rejected(
@@ -2586,7 +2987,7 @@ class AdmissionPolicy:
             decided_at=self._clock.now(),
         )
 
-    def evaluate(self, proposal: ClaimProposal, *, cutoff: datetime) -> AdmissionDecision:
+    async def evaluate(self, proposal: ClaimProposal, *, cutoff: datetime) -> AdmissionDecision:
         if cutoff != proposal.decision_cutoff:
             raise ValueError("admission cutoff must match the sealed proposal cutoff")
         if proposal.claim.availability.received_at > cutoff:
@@ -2601,7 +3002,8 @@ class AdmissionPolicy:
             return self._reject(proposal, AdmissionReason.AUTHOR_PRECISION_BELOW_BAR)
         if proposal.fresh_until is not None and proposal.fresh_until < cutoff:
             return self._reject(proposal, AdmissionReason.STALE)
-        independent = len(frozenset(proposal.origin_cluster_ids))
+        origin_clusters = await self._ledger.origin_clusters_for_claim(proposal.claim.claim_id)
+        independent = len(frozenset(origin_clusters))
         if proposal.requires_corroboration and independent < 2:
             return self._reject(proposal, AdmissionReason.INSUFFICIENT_CORROBORATION)
         if proposal.requires_human and proposal.human_decision is None:
@@ -2654,8 +3056,10 @@ git commit -m "feat: govern identity and claim admission"
 - Create: `tests/contract/semantic/test_query_equivalence.py`
 
 **Interfaces:**
-- Consumes: Task 7 `SemanticSnapshot`, Task 4/5/6 retrieval adapters.
-- Produces: `EvidenceQuery`, `QueryTemplateRegistry`, and `QueryService.execute(query)`.
+- Consumes: Task 7 `SemanticSnapshot` plus sealed `SemanticProjectionReceipt`, Task 1
+  `QueryPackRelease`, and Task 4/5/6 retrieval adapters.
+- Produces: `EvidenceQuery`, `QueryTemplateRegistry`, immutable `RetrievalReceipt`, closed semantic
+  query errors, and `QueryService.execute(query) -> QueryExecutionResult`.
 
 - [ ] **Step 1: Write unrestricted-query rejection and cutoff tests**
 
@@ -2674,6 +3078,19 @@ def test_unknown_template_is_rejected(query_registry) -> None:
 def test_decision_query_requires_cutoff(query_registry) -> None:
     with pytest.raises(ValueError, match="decision_cutoff"):
         query_registry.bind("instrument-evidence-v1", {"instrument_id": "sec:1"})
+
+
+def test_every_binding_participates_in_cache_identity(query_factory) -> None:
+    original = query_factory()
+    for field in (
+        "validated_data_snapshot_id",
+        "semantic_snapshot_id",
+        "projection_receipt_id",
+        "ontology_release_id",
+        "query_pack_release_id",
+        "decision_cutoff",
+    ):
+        assert original.cache_key != query_factory(**{field: DIFFERENT[field]}).cache_key
 ```
 
 - [ ] **Step 2: Run and observe missing query registry**
@@ -2717,7 +3134,9 @@ class EvidenceQuery(BaseModel):
     template_version: str
     validated_data_snapshot_id: str
     semantic_snapshot_id: str
+    projection_receipt_id: str
     ontology_release_id: str
+    query_pack_release_id: str
     target_ids: tuple[str, ...]
     horizon: str
     domain_filters: tuple[str, ...]
@@ -2726,6 +3145,23 @@ class EvidenceQuery(BaseModel):
     minimum_admission_state: str
     maximum_age_days: int
     decision_cutoff: datetime
+
+    @property
+    def cache_key(self) -> str:
+        return canonical_sha256(self.model_dump(mode="json"))
+
+
+class RetrievalReceipt(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    receipt_id: str
+    query_hash: str
+    answer_hash: str
+    query_binding: SemanticQueryBinding
+    template_id: str
+    template_version: str
+    retrieval_path: ProjectionKind
+    degraded_from: ProjectionKind | None = None
+    created_at: datetime
 ```
 
 The registry loads only release-manifest-listed templates, verifies their hashes, validates typed
@@ -2776,7 +3212,23 @@ class TemplateExecutionPort(Protocol):
     ) -> EvidenceAnswer: ...
 
 
-class SemanticProjectionUnavailable(RuntimeError):
+class SemanticQueryError(RuntimeError):
+    pass
+
+
+class SemanticProjectionUnavailable(SemanticQueryError):
+    pass
+
+
+class SemanticProjectionInvalid(SemanticQueryError):
+    pass
+
+
+class SemanticProtocolError(SemanticQueryError):
+    pass
+
+
+class SemanticSnapshotMismatch(SemanticQueryError):
     pass
 
 
@@ -2791,16 +3243,22 @@ class QueryService:
         self._projection = projection
         self._adapter = adapter
 
-    async def execute(self, query: EvidenceQuery) -> EvidenceAnswer:
+    async def execute(self, query: EvidenceQuery) -> QueryExecutionResult:
+        await self._receipts.require_sealed(
+            snapshot_id=query.semantic_snapshot_id,
+            receipt_id=query.projection_receipt_id,
+        )
         text = self._registry.template_text(query, self._projection)
         try:
             answer = await self._adapter.execute_template(
                 template_text=text,
                 parameters=query.model_dump(mode="json"),
             )
-        except TimeoutError as exc:
+        except (TimeoutError, httpx.TimeoutException, httpx.TransportError) as exc:
             raise SemanticProjectionUnavailable("governed query timed out") from exc
-        return answer.model_copy(
+        except (httpx.HTTPStatusError, ValueError, KeyError, ValidationError) as exc:
+            raise SemanticProtocolError("projection response failed governed decoding") from exc
+        bound_answer = answer.model_copy(
             update={
                 "template_id": query.template_id,
                 "template_version": query.template_version,
@@ -2810,7 +3268,16 @@ class QueryService:
                 "degraded": False,
             }
         )
+        if bound_answer.semantic_snapshot_id != query.semantic_snapshot_id:
+            raise SemanticSnapshotMismatch("answer snapshot does not match the bound request")
+        receipt = RetrievalReceipt.seal(query=query, answer=bound_answer, path=self._projection)
+        return QueryExecutionResult(answer=bound_answer, receipt=receipt)
 ```
+
+Fallback is explicit template-to-template policy, not a generic exception handler. Task 15 may
+retry on the relational champion only when the active query-pack manifest declares an equivalent
+relational template for the exact question and normalized error class. Integrity, binding, decode,
+or missing-equivalent-template errors always fail closed.
 
 - [ ] **Step 4: Verify registry and three-path query equivalence**
 
@@ -2855,7 +3322,7 @@ def test_technical_packet_records_series_and_horizon(technical_builder, split_ad
 # tests/unit/semantic/test_fundamental_packet.py
 def test_post_cutoff_restatement_is_excluded(fundamental_builder, snapshot_with_late_restatement) -> None:
     packet = fundamental_builder.build(snapshot_with_late_restatement, horizon="3m")
-    assert "late-restatement" not in packet.observation_ids
+    assert "late-restatement" not in packet.supporting_observation_ids
 ```
 
 - [ ] **Step 2: Run and observe missing packet modules**
@@ -2880,6 +3347,10 @@ class PacketContext(BaseModel):
     validated_data_snapshot_id: str
     semantic_snapshot_id: str
     ontology_release_id: str
+    query_pack_release_id: str
+    retrieval_receipt_ids: tuple[str, ...]
+    supporting_observation_ids: tuple[str, ...]
+    refuting_observation_ids: tuple[str, ...]
     supporting_assertion_ids: tuple[str, ...]
     refuting_assertion_ids: tuple[str, ...]
     contradiction_ids: tuple[str, ...]
@@ -2896,14 +3367,17 @@ class EvidencePacketContent(BaseModel):
     validated_data_snapshot_id: str
     semantic_snapshot_id: str
     ontology_release_id: str
-    observation_ids: tuple[str, ...]
+    query_pack_release_id: str
+    retrieval_receipt_ids: tuple[str, ...]
+    supporting_observation_ids: tuple[str, ...]
+    refuting_observation_ids: tuple[str, ...]
     supporting_assertion_ids: tuple[str, ...]
     refuting_assertion_ids: tuple[str, ...]
     contradiction_ids: tuple[str, ...]
     freshness_band: str
     missingness: tuple[str, ...]
     applicable_regimes: tuple[str, ...]
-    deterministic_features: dict[str, str]
+    deterministic_features: dict[str, Decimal]
     lineage: dict[str, str]
 
 
@@ -2921,8 +3395,9 @@ def packet_content(
     *,
     domain: str,
     horizon: str,
-    observation_ids: tuple[str, ...],
-    deterministic_features: dict[str, str],
+    supporting_observation_ids: tuple[str, ...],
+    refuting_observation_ids: tuple[str, ...],
+    deterministic_features: dict[str, Decimal],
     lineage: dict[str, str],
 ) -> EvidencePacketContent:
     return EvidencePacketContent(
@@ -2932,7 +3407,10 @@ def packet_content(
         validated_data_snapshot_id=context.validated_data_snapshot_id,
         semantic_snapshot_id=context.semantic_snapshot_id,
         ontology_release_id=context.ontology_release_id,
-        observation_ids=observation_ids,
+        query_pack_release_id=context.query_pack_release_id,
+        retrieval_receipt_ids=context.retrieval_receipt_ids,
+        supporting_observation_ids=supporting_observation_ids,
+        refuting_observation_ids=refuting_observation_ids,
         supporting_assertion_ids=context.supporting_assertion_ids,
         refuting_assertion_ids=context.refuting_assertion_ids,
         contradiction_ids=context.contradiction_ids,
@@ -2968,8 +3446,9 @@ class TechnicalPacketBuilder:
             snapshot.context,
             domain="technical",
             horizon=horizon,
-            observation_ids=snapshot.observation_ids,
-            deterministic_features={key: str(value) for key, value in sorted(features.items())},
+            supporting_observation_ids=snapshot.supporting_observation_ids,
+            refuting_observation_ids=snapshot.refuting_observation_ids,
+            deterministic_features={key: value for key, value in sorted(features.items())},
             lineage={
                 "price_series": snapshot.series_kind,
                 "feature_manifest": snapshot.feature_manifest.hash,
@@ -3001,8 +3480,9 @@ class FundamentalPacketBuilder:
             snapshot.context,
             domain="fundamental",
             horizon=horizon,
-            observation_ids=tuple(str(item.observation_id) for item in latest),
-            deterministic_features={item.metric_id: item.value_text for item in latest},
+            supporting_observation_ids=tuple(str(item.observation_id) for item in latest),
+            refuting_observation_ids=(),
+            deterministic_features={item.metric_id: item.numeric_value for item in latest},
             lineage={
                 "filing_ids": ",".join(sorted({item.filing_id for item in latest})),
                 "accounting_basis": snapshot.accounting_basis,
@@ -3048,7 +3528,7 @@ git commit -m "feat: build technical and fundamental evidence packets"
 # tests/unit/semantic/test_sentiment_packet.py
 def test_syndicated_articles_are_one_evidence_family(sentiment_builder, syndicated_cluster) -> None:
     packet = sentiment_builder.build(syndicated_cluster, horizon="1m")
-    assert packet.deterministic_features["independent_origin_count"] == "1"
+    assert packet.deterministic_features["independent_origin_count"] == Decimal("1")
 ```
 
 ```python
@@ -3100,16 +3580,19 @@ class SentimentPacketBuilder:
             cluster.context,
             domain="sentiment",
             horizon=horizon,
-            observation_ids=tuple(sorted(str(item.observation_id) for item in cluster.documents)),
+            supporting_observation_ids=tuple(
+                sorted(str(item.observation_id) for item in cluster.documents)
+            ),
+            refuting_observation_ids=(),
             deterministic_features={
-                "independent_origin_count": str(len(origins)),
-                "classification": cluster.closed_classification.value,
+                "independent_origin_count": Decimal(len(origins)),
             },
             lineage={
                 "target_id": cluster.target_id,
                 "speaker_id": cluster.speaker_id,
                 "language": cluster.language,
                 "model_version": cluster.model_version,
+                "classification": cluster.closed_classification.value,
             },
         )
         return EvidencePacket.seal(content)
@@ -3127,7 +3610,8 @@ class MacroPacketBuilder:
                     context,
                     domain="macro",
                     horizon=release.horizon,
-                    observation_ids=(),
+                    supporting_observation_ids=(),
+                    refuting_observation_ids=(),
                     deterministic_features={},
                     lineage={"release_id": release.release_id, "vintage": "missing"},
                 )
@@ -3139,15 +3623,16 @@ class MacroPacketBuilder:
                 release.context,
                 domain="macro",
                 horizon=release.horizon,
-                observation_ids=(str(vintage.observation_id),),
+                supporting_observation_ids=(str(vintage.observation_id),),
+                refuting_observation_ids=(),
                 deterministic_features={
-                    "surprise": str(surprise),
-                    "shock_class": vintage.closed_shock_class.value,
+                    "surprise": surprise,
                 },
                 lineage={
                     "release_id": release.release_id,
                     "vintage": vintage.vintage_id,
                     "consensus_source": vintage.consensus_source_id,
+                    "shock_class": vintage.closed_shock_class.value,
                 },
             )
         )
@@ -3181,8 +3666,9 @@ class RelationshipPacketBuilder:
                 context,
                 domain="relationship",
                 horizon=horizon,
-                observation_ids=(),
-                deterministic_features={"approved_path_count": str(len(approved))},
+                supporting_observation_ids=(),
+                refuting_observation_ids=(),
+                deterministic_features={"approved_path_count": Decimal(len(approved))},
                 lineage={"motif_ids": ",".join(sorted({path.motif_id for path in approved}))},
             )
         )
@@ -3195,9 +3681,10 @@ class PortfolioPacketBuilder:
                 snapshot.context,
                 domain="portfolio",
                 horizon=horizon,
-                observation_ids=snapshot.observation_ids,
+                supporting_observation_ids=snapshot.supporting_observation_ids,
+                refuting_observation_ids=snapshot.refuting_observation_ids,
                 deterministic_features={
-                    key: str(value) for key, value in sorted(snapshot.deterministic_features.items())
+                    key: value for key, value in sorted(snapshot.deterministic_features.items())
                 },
                 lineage={
                     "namespace": "internal-portfolio",
@@ -3226,15 +3713,22 @@ git commit -m "feat: build cross-domain evidence packets"
 **Files:**
 - Create: `src/trading_os/semantic/models/belief.py`
 - Create: `src/trading_os/semantic/reasoning/belief_builder.py`
+- Create: `src/trading_os/semantic/reasoning/support_rules.py`
 - Create: `src/trading_os/semantic/reasoning/decision_features.py`
+- Create: `src/trading_os/semantic/reasoning/risk_overlays.py`
+- Create: `src/trading_os/semantic/reasoning/deterministic_policy.py`
 - Modify: `src/trading_os/research/seam.py`
 - Modify: `src/trading_os/domain/candidates.py`
 - Create: `tests/unit/semantic/test_belief_builder.py`
 - Create: `tests/unit/semantic/test_decision_feature_seam.py`
 
 **Interfaces:**
-- Consumes: Tasks 10/11 packets and versioned deterministic policy config.
-- Produces: `InstrumentHypothesis`, `HypothesisAssessment`, `InstrumentBeliefState`, `DecisionFeatureSet`, and `DecisionFeatureProjector.project(state, strategy)`.
+- Consumes: Tasks 10/11 packets, `HypothesisSupportRuleRelease`, `FeaturePolicyRelease`, and a
+  versioned deterministic strategy policy.
+- Produces: `InstrumentHypothesis`, observation-grounded `HypothesisAssessment`,
+  `InstrumentBeliefState`, `DecisionFeatureSet`, tighten-only `RiskOverlaySet`,
+  `DecisionFeatureProjector.project(state, strategy)`, and
+  `DeterministicStrategyPolicy.evaluate(features) -> HotPathCandidate | None`.
 
 - [ ] **Step 1: Write contradiction, no-fake-precision, and seam tests**
 
@@ -3260,6 +3754,15 @@ from trading_os.semantic.reasoning.decision_features import ForbiddenDecisionFea
 def test_projector_rejects_raw_narrative(feature_projector, belief_with_narrative) -> None:
     with pytest.raises(ForbiddenDecisionFeature):
         feature_projector.project(belief_with_narrative, strategy="factor_tilt_v1")
+
+
+def test_unknown_feature_is_dropped_not_auto_allowlisted(feature_projector, belief_with_unknown) -> None:
+    projected = feature_projector.project(belief_with_unknown, strategy="factor_tilt_v1")
+    assert "fundamental.unreviewed_metric" not in projected.numeric_features
+
+
+def test_risk_overlay_can_only_tighten(valid_overlay) -> None:
+    assert all(Decimal("0") <= value <= Decimal("1") for value in valid_overlay.multipliers.values())
 ```
 
 - [ ] **Step 2: Run and observe missing belief/seam types**
@@ -3302,7 +3805,10 @@ class HypothesisAssessment(BaseModel):
     status: HypothesisStatus
     supporting_assertion_ids: tuple[str, ...] = ()
     refuting_assertion_ids: tuple[str, ...] = ()
+    supporting_observation_ids: tuple[str, ...] = ()
+    refuting_observation_ids: tuple[str, ...] = ()
     evidence_packet_ids: tuple[str, ...] = ()
+    support_rule_release_id: str
     reasons: tuple[str, ...] = ()
 
     @classmethod
@@ -3310,11 +3816,14 @@ class HypothesisAssessment(BaseModel):
         cls,
         hypothesis: InstrumentHypothesis,
         packets: tuple[EvidencePacket, ...],
+        *,
+        support_rule_release_id: str,
     ) -> "HypothesisAssessment":
         reasons = tuple(sorted({reason for packet in packets for reason in packet.missingness}))
         return cls(
             hypothesis_id=hypothesis.hypothesis_id,
             status=HypothesisStatus.INSUFFICIENT,
+            support_rule_release_id=support_rule_release_id,
             evidence_packet_ids=tuple(packet.packet_id for packet in packets),
             reasons=reasons or ("no_supporting_assertion",),
         )
@@ -3326,6 +3835,9 @@ class InstrumentBeliefState(BaseModel):
     semantic_snapshot_id: str
     validated_data_snapshot_id: str
     ontology_release_id: str
+    query_pack_release_id: str
+    reasoning_policy_release_id: str
+    support_rule_release_id: str
     assessments: tuple[HypothesisAssessment, ...]
     evidence_packet_ids: tuple[str, ...]
     unresolved_identity_candidate_ids: tuple[str, ...]
@@ -3341,17 +3853,41 @@ class DecisionFeatureSet(BaseModel):
     categorical_features: dict[str, str]
     numeric_features: dict[str, Decimal]
     lineage_ids: tuple[str, ...]
+
+
+class RiskOverlaySet(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    instrument_id: str
+    snapshot_id: str
+    policy_release_id: str
+    multipliers: dict[str, Decimal]
+    veto_reasons: tuple[str, ...] = ()
+
+    @field_validator("multipliers")
+    @classmethod
+    def tighten_only(cls, value: dict[str, Decimal]) -> dict[str, Decimal]:
+        if any(multiplier < 0 or multiplier > 1 for multiplier in value.values()):
+            raise ValueError("risk overlays must be within [0, 1]")
+        return value
 ```
 
-`BeliefStateBuilder` uses frozen rule tables: support without refutation → SUPPORTED; support and
-refutation → CONTESTED; required data missing → INSUFFICIENT; horizon/regime mismatch →
-INAPPLICABLE. `DecisionFeatureProjector` loads a strategy-specific allowlist and verifies every
-numeric feature was produced by a deterministic evaluator. Replace the old thesis-to-candidate
-seam; the deterministic strategy consumes `DecisionFeatureSet` and emits `HotPathCandidate`.
+`BeliefStateBuilder` loads an exact `HypothesisSupportRuleRelease`. Each rule declares required
+domains, qualifying observation predicates, support/refutation conditions, missing-data behavior,
+and contradiction behavior. Packet presence alone never establishes support. The evaluator records
+the exact supporting/refuting observation and assertion IDs used. `DecisionFeatureProjector` loads
+a strategy-specific positive allowlist and silently excludes unknown producer keys while still
+rejecting forbidden lineage. `RiskOverlayProjector` emits only multipliers in `[0, 1]` or vetoes.
+The versioned deterministic strategy policy is the sole adapter from `DecisionFeatureSet` to
+`HotPathCandidate`; neither beliefs nor graph paths enter sizing directly.
 
 ```python
 # src/trading_os/semantic/reasoning/belief_builder.py
-def assess(hypothesis: InstrumentHypothesis, packets: tuple[EvidencePacket, ...]) -> HypothesisAssessment:
+def assess(
+    hypothesis: InstrumentHypothesis,
+    packets: tuple[EvidencePacket, ...],
+    *,
+    support_rules: HypothesisSupportRuleEvaluator,
+) -> HypothesisAssessment:
     applicable = tuple(
         packet
         for packet in packets
@@ -3365,42 +3901,16 @@ def assess(hypothesis: InstrumentHypothesis, packets: tuple[EvidencePacket, ...]
         return HypothesisAssessment(
             hypothesis_id=hypothesis.hypothesis_id,
             status=HypothesisStatus.INAPPLICABLE,
+            support_rule_release_id=support_rules.release_id,
             reasons=("horizon_or_regime_mismatch",),
         )
-    missing_domains = set(hypothesis.required_domains) - {packet.domain for packet in applicable}
-    if missing_domains:
-        return HypothesisAssessment(
-            hypothesis_id=hypothesis.hypothesis_id,
-            status=HypothesisStatus.INSUFFICIENT,
-            evidence_packet_ids=tuple(packet.packet_id for packet in applicable),
-            reasons=tuple(f"missing_domain:{name}" for name in sorted(missing_domains)),
-        )
-    if any(packet.missingness for packet in applicable):
-        return HypothesisAssessment.insufficient(hypothesis, applicable)
-    supports = tuple(value for packet in applicable for value in packet.supporting_assertion_ids)
-    refutes = tuple(value for packet in applicable for value in packet.refuting_assertion_ids)
-    if supports and refutes:
-        return HypothesisAssessment(
-            hypothesis_id=hypothesis.hypothesis_id,
-            status=HypothesisStatus.CONTESTED,
-            supporting_assertion_ids=tuple(sorted(set(supports))),
-            refuting_assertion_ids=tuple(sorted(set(refutes))),
-            evidence_packet_ids=tuple(packet.packet_id for packet in applicable),
-            reasons=("material_contradiction",),
-        )
-    if supports:
-        return HypothesisAssessment(
-            hypothesis_id=hypothesis.hypothesis_id,
-            status=HypothesisStatus.SUPPORTED,
-            supporting_assertion_ids=tuple(sorted(set(supports))),
-            evidence_packet_ids=tuple(packet.packet_id for packet in applicable),
-        )
-    return HypothesisAssessment.insufficient(hypothesis, applicable)
+    return support_rules.evaluate(hypothesis=hypothesis, packets=applicable)
 
 
 class BeliefStateBuilder:
-    def __init__(self, hypotheses: tuple[InstrumentHypothesis, ...], clock: ClockPort) -> None:
+    def __init__(self, hypotheses, support_rules: HypothesisSupportRuleEvaluator, clock: ClockPort) -> None:
         self._hypotheses = hypotheses
+        self._support_rules = support_rules
         self._clock = clock
 
     def build(
@@ -3418,19 +3928,31 @@ class BeliefStateBuilder:
                 packet.validated_data_snapshot_id,
                 packet.semantic_snapshot_id,
                 packet.ontology_release_id,
+                packet.query_pack_release_id,
             )
             for packet in packets
         }
         if len(bindings) != 1:
             raise ValueError("packets from different instruments or snapshots cannot be combined")
-        instrument_id, data_snapshot_id, semantic_snapshot_id, ontology_release_id = bindings.pop()
+        (
+            instrument_id,
+            data_snapshot_id,
+            semantic_snapshot_id,
+            ontology_release_id,
+            query_pack_release_id,
+        ) = bindings.pop()
         hypotheses = tuple(item for item in self._hypotheses if item.instrument_id == instrument_id)
-        assessments = tuple(assess(item, packets) for item in hypotheses)
+        assessments = tuple(
+            assess(item, packets, support_rules=self._support_rules) for item in hypotheses
+        )
         return InstrumentBeliefState(
             instrument_id=instrument_id,
             semantic_snapshot_id=semantic_snapshot_id,
             validated_data_snapshot_id=data_snapshot_id,
             ontology_release_id=ontology_release_id,
+            query_pack_release_id=query_pack_release_id,
+            reasoning_policy_release_id=self._support_rules.reasoning_policy_release_id,
+            support_rule_release_id=self._support_rules.release_id,
             assessments=assessments,
             evidence_packet_ids=tuple(sorted(packet.packet_id for packet in packets)),
             unresolved_identity_candidate_ids=unresolved_identity_candidate_ids,
@@ -3508,7 +4030,30 @@ class DecisionFeatureProjector:
             numeric_features=numeric,
             lineage_ids=state.evidence_packet_ids + (policy.policy_id,),
         )
+
+
+class DeterministicStrategyPolicy(Protocol):
+    policy_release_id: str
+
+    def evaluate(self, features: DecisionFeatureSet) -> HotPathCandidate | None: ...
+
+
+class RiskOverlayProjector:
+    def project(self, state: InstrumentBeliefState, *, policy: RiskOverlayPolicy) -> RiskOverlaySet:
+        multipliers = policy.evaluate(state)
+        return RiskOverlaySet(
+            instrument_id=state.instrument_id,
+            snapshot_id=state.semantic_snapshot_id,
+            policy_release_id=policy.release_id,
+            multipliers=multipliers,
+            veto_reasons=policy.veto_reasons(state),
+        )
 ```
+
+Add a seam test that evaluates the same `DecisionFeatureSet` twice through the exact
+`DeterministicStrategyPolicy` release and obtains byte-identical `HotPathCandidate`s. Add an import
+test proving that the policy module can import only hot-path value objects—not RDF, Neo4j, Source
+Records, LLM clients, or unrestricted query types.
 
 - [ ] **Step 4: Verify containment and hot-path import boundary**
 
@@ -3532,6 +4077,7 @@ git commit -m "feat: project evidence into deterministic decision features"
 **Files:**
 - Create: `src/trading_os/semantic/evaluation/metrics.py`
 - Create: `src/trading_os/semantic/evaluation/differential.py`
+- Create: `src/trading_os/semantic/evaluation/knowledge_contamination.py`
 - Create: `config/semantic/reasoning_promotion.yaml`
 - Create: `tests/unit/semantic/test_reasoning_metrics.py`
 - Create: `tests/integration/semantic/test_differential_retrieval.py`
@@ -3551,17 +4097,30 @@ def test_correct_unknown_is_rewarded(metric_calculator, missing_knowledge_case) 
 
 def test_challenger_with_identity_regression_cannot_promote(
     promotion_gate,
-    champion_metrics,
-    challenger_metrics,
+    valid_evaluation,
 ) -> None:
-    degraded = challenger_metrics.model_copy(update={"catastrophic_false_merges": 1})
-    assert promotion_gate.evaluate(champion_metrics, degraded).promotable is False
+    degraded = valid_evaluation.model_copy(
+        update={
+            "challenger": valid_evaluation.challenger.model_copy(
+                update={"catastrophic_false_merges": 1}
+            )
+        }
+    )
+    assert promotion_gate.evaluate(degraded).promotable is False
 
 
 def test_prompt_injection_text_cannot_select_a_query_or_admit_a_claim(adversarial_runner) -> None:
     result = adversarial_runner.run("prompt-injection-source-v1")
     assert result.executed_template_ids == ("instrument-evidence-v1",)
     assert result.new_admission_decision_ids == ()
+
+
+def test_contaminated_historical_llm_cell_is_not_promotable(promotion_gate, contaminated_evaluation) -> None:
+    assert promotion_gate.evaluate(contaminated_evaluation).promotable is False
+
+
+def test_uncorrected_multiple_comparison_cannot_promote(promotion_gate, uncorrected_evaluation) -> None:
+    assert promotion_gate.evaluate(uncorrected_evaluation).reason == "multiplicity_gate_failed"
 ```
 
 - [ ] **Step 2: Run and observe missing evaluation modules**
@@ -3575,8 +4134,12 @@ Expected: FAIL on missing semantic evaluation modules.
 Score factual precision/recall, source entailment, citation correctness, contradiction detection,
 appropriate abstention, missing-knowledge behavior, catastrophic false merges, future-fact leaks,
 latency, and cost. `reasoning_promotion.yaml` declares primary metrics, zero-tolerance safety metrics,
-material-improvement thresholds, and budgets. A challenger must improve at least one primary metric,
-meet every safety/budget gate, and show no disallowed holdout regression.
+one predeclared primary metric, minimum material effect, multiplicity correction, fixed retirement
+horizon, and budgets. Run every frozen case against the relational champion, RDF, and Neo4j. For
+historical cases involving an LLM role, run retrieval, no-retrieval, and masked-knowledge probes;
+seal model identifier/provider knowledge-cutoff metadata and mark any contaminated cell
+non-promotable. A challenger must meet effect-size and corrected-significance gates, every
+safety/budget gate, and show no disallowed holdout regression.
 
 ```python
 from decimal import Decimal
@@ -3608,15 +4171,16 @@ class ReasoningMetrics(BaseModel):
 
 class ReasoningPromotionPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
-    primary_metrics: tuple[str, ...]
+    primary_metric: str
     protected_metrics: tuple[str, ...]
-    material_gains: dict[str, float]
+    minimum_material_effect: float
     allowed_regressions: dict[str, float]
+    familywise_alpha: float
+    multiplicity_method: Literal["holm"]
+    fixed_retirement_horizon_runs: int
+    minimum_case_count: int
     max_latency_ms: float
     max_cost: Decimal
-
-    def material_gain(self, name: str) -> float:
-        return self.material_gains[name]
 
     def allowed_regression(self, name: str) -> float:
         return self.allowed_regressions[name]
@@ -3636,8 +4200,14 @@ class EvaluationManifest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     manifest_hash: str
     frozen_case_set_hash: str
-    champion_path: str
-    challenger_path: str
+    retrieval_paths: tuple[Literal["relational", "rdf", "neo4j"], ...]
+    primary_metric: str
+    model_id: str | None
+    model_provider: str | None
+    declared_knowledge_cutoff: date | None
+    knowledge_probe_modes: tuple[Literal["retrieval", "no_retrieval", "masked"], ...]
+    multiplicity_family_id: str
+    fixed_retirement_horizon_runs: int
 
 
 class DifferentialEvaluation(BaseModel):
@@ -3645,18 +4215,30 @@ class DifferentialEvaluation(BaseModel):
     manifest_hash: str
     champion: ReasoningMetrics
     challenger: ReasoningMetrics
-    promotion: PromotionResult
+    promotion: PromotionResult | None = None
+    corrected_p_value: float
+    primary_effect: float
+    contaminated_cell_ids: tuple[str, ...]
+    knowledge_probe_receipt_ids: tuple[str, ...]
 
 
 class FrozenCaseRunnerPort(Protocol):
-    def score(self, case_set_hash: str, retrieval_path: str) -> ReasoningMetrics: ...
+    def score_all_paths_and_probes(self, manifest: EvaluationManifest) -> FrozenEvaluationCells: ...
 
 
 class ReasoningPromotionGate:
     def __init__(self, policy: ReasoningPromotionPolicy) -> None:
         self._policy = policy
 
-    def evaluate(self, champion: ReasoningMetrics, challenger: ReasoningMetrics) -> PromotionResult:
+    def evaluate(self, evaluation: DifferentialEvaluation) -> PromotionResult:
+        champion = evaluation.champion
+        challenger = evaluation.challenger
+        if evaluation.contaminated_cell_ids:
+            return PromotionResult.reject("knowledge_contamination")
+        if evaluation.corrected_p_value > self._policy.familywise_alpha:
+            return PromotionResult.reject("multiplicity_gate_failed")
+        if evaluation.primary_effect < self._policy.minimum_material_effect:
+            return PromotionResult.reject("effect_size_gate_failed")
         if challenger.catastrophic_false_merges != 0 or challenger.future_fact_leaks != 0:
             return PromotionResult.reject("zero_tolerance_safety_failure")
         if challenger.latency_ms > self._policy.max_latency_ms or challenger.cost > self._policy.max_cost:
@@ -3667,11 +4249,7 @@ class ReasoningPromotionGate:
         )
         if regressed:
             return PromotionResult.reject("protected_metric_regression")
-        improved = any(
-            challenger.metric(name) - champion.metric(name) >= self._policy.material_gain(name)
-            for name in self._policy.primary_metrics
-        )
-        return PromotionResult(promotable=improved, reason="material_gain" if improved else "no_material_gain")
+        return PromotionResult(promotable=True, reason="corrected_material_gain")
 
 
 def evaluate_challenger(
@@ -3680,14 +4258,9 @@ def evaluate_challenger(
     runner: FrozenCaseRunnerPort,
     gate: ReasoningPromotionGate,
 ) -> DifferentialEvaluation:
-    champion = runner.score(manifest.frozen_case_set_hash, manifest.champion_path)
-    challenger = runner.score(manifest.frozen_case_set_hash, manifest.challenger_path)
-    return DifferentialEvaluation(
-        manifest_hash=manifest.manifest_hash,
-        champion=champion,
-        challenger=challenger,
-        promotion=gate.evaluate(champion, challenger),
-    )
+    cells = runner.score_all_paths_and_probes(manifest)
+    evaluation = DifferentialEvaluation.from_frozen_cells(manifest=manifest, cells=cells)
+    return evaluation.model_copy(update={"promotion": gate.evaluate(evaluation)})
 ```
 
 - [ ] **Step 4: Verify differential evaluation on frozen cases**
@@ -3712,13 +4285,19 @@ git commit -m "feat: evaluate semantic challengers against relational retrieval"
 - Create: `src/trading_os/semantic/improvement/store.py`
 - Create: `src/trading_os/semantic/improvement/roles.py`
 - Create: `src/trading_os/semantic/improvement/promotion.py`
-- Create: `alembic/versions/0004_semantic_improvement.py`
+- Create: `src/trading_os/semantic/improvement/activation.py`
+- Create: `src/trading_os/semantic/improvement/canary.py`
+- Create: `alembic/versions/20260721_0004_semantic_improvement.py`
 - Create: `tests/unit/semantic/test_improvement_loop.py`
 - Create: `tests/unit/semantic/test_promotion_authority.py`
+- Create: `tests/unit/semantic/test_decision_feature_activation.py`
 
 **Interfaces:**
 - Consumes: Task 13 evaluation, Task 1 release builder, human approval decisions, frozen experiment manifest.
-- Produces: `FailureCase`, `Diagnosis`, `ChangeProposal`, `ExperimentManifest`, `ExperimentOutcome`, `ImprovementCoordinator.run(failure_id: UUID) -> ImprovementRunResult`, and `PromotionAuthority.decide(proposal: EvaluatedProposal, *, approver_id: str | None) -> PromotionDecision`.
+- Produces: `FailureCase`, closed `RootCauseClass`, `Diagnosis`, `ChangeProposal`,
+  `ExperimentManifest`, `ExperimentOutcome`, `ImprovementCoordinator.run(...)`, semantic-only
+  `PromotionAuthority`, immutable `DecisionFeatureActivation`, `CanaryManifest`, `CanaryReceipt`,
+  governed transition validation, and automatic rollback.
 
 - [ ] **Step 1: Write self-promotion, holdout, and remediation-budget tests**
 
@@ -3738,6 +4317,21 @@ def test_high_risk_change_always_requires_human(promotion_authority, causal_rela
 def test_medium_risk_starts_human_gated(promotion_authority, medium_risk_proposal) -> None:
     decision = promotion_authority.decide(medium_risk_proposal, approver_id=None)
     assert decision.status == "awaiting_human"
+
+
+def test_semantic_promotion_does_not_activate_features(promotion_publisher, approved_semantic_release) -> None:
+    promotion_publisher.publish(**approved_semantic_release)
+    assert promotion_publisher.feature_activation_store.active() is None
+
+
+def test_activation_cannot_skip_paper_canary(activation_authority, shadow_activation) -> None:
+    with pytest.raises(ValueError, match="PAPER_CANARY"):
+        activation_authority.transition(shadow_activation, ActivationMode.PAPER_ACTIVE)
+
+
+def test_canary_cap_breach_rolls_back(canary_monitor, live_canary_receipt) -> None:
+    result = canary_monitor.observe(live_canary_receipt, capital_cap_breached=True)
+    assert result.mode is ActivationMode.PAPER_ACTIVE
 ```
 
 ```python
@@ -3763,6 +4357,7 @@ Expected: FAIL on missing improvement modules.
 - [ ] **Step 3: Implement durable artifacts, role separation, shadow, and rollback**
 
 ```python
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
@@ -3774,6 +4369,17 @@ class ChangeRisk(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
+
+
+class RootCauseClass(StrEnum):
+    ONTOLOGY_GAP = "ontology_gap"
+    IDENTITY_ERROR = "identity_error"
+    QUERY_ERROR = "query_error"
+    SUPPORT_RULE_ERROR = "support_rule_error"
+    DATA_GAP = "data_gap"
+    PROJECTION_ERROR = "projection_error"
+    FEATURE_POLICY_ERROR = "feature_policy_error"
+    CONTAMINATED_EVALUATION = "contaminated_evaluation"
 
 
 class FailureCase(BaseModel):
@@ -3792,7 +4398,7 @@ class Diagnosis(BaseModel):
     diagnosis_id: UUID
     failure_case_id: UUID
     analyst_id: str
-    root_cause_class: str
+    root_cause_class: RootCauseClass
     cited_artifact_ids: tuple[str, ...]
 
 
@@ -3903,6 +4509,48 @@ class ImprovementRunResult(BaseModel):
     proposal_id: UUID | None = None
     experiment_outcome_id: UUID | None = None
     evaluated_proposal_id: UUID | None = None
+
+
+class ActivationMode(StrEnum):
+    DISABLED = "disabled"
+    SHADOW = "shadow"
+    PAPER_CANARY = "paper_canary"
+    PAPER_ACTIVE = "paper_active"
+    LIVE_CANARY = "live_canary"
+    LIVE_ACTIVE = "live_active"
+
+
+class DecisionFeatureActivation(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    activation_id: str
+    mode: ActivationMode
+    ontology_release_id: str
+    query_pack_release_id: str
+    reasoning_policy_release_id: str
+    support_rule_release_id: str
+    feature_policy_release_id: str
+    deterministic_strategy_policy_release_id: str
+    risk_overlay_policy_release_id: str
+    scope: tuple[str, ...]
+    capital_cap: Decimal
+    risk_cap: Decimal
+    horizon_started_at: datetime
+    horizon_ends_at: datetime
+    rollback_activation_id: str | None
+    approved_by: str
+
+
+class CanaryReceipt(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    receipt_id: str
+    activation_id: str
+    mode: ActivationMode
+    observed_scope: tuple[str, ...]
+    capital_used: Decimal
+    risk_used: Decimal
+    success_gate_ids: tuple[str, ...]
+    rollback_trigger_ids: tuple[str, ...]
+    passed: bool
 ```
 
 Persist FailureCase, Diagnosis, ChangeProposal, ExperimentManifest, and ExperimentOutcome in
@@ -3911,7 +4559,13 @@ and red-team roles emit typed artifacts; none can publish directly. Holdout answ
 to the evaluator. HIGH is always human-approved; MEDIUM begins human-approved; LOW becomes eligible
 for automatic promotion only when a separately human-approved policy version permits the exact
 change class. Shadow regressions atomically restore the prior active release pointer and append a
-rollback event.
+rollback event. This authority changes semantic release pointers only; it cannot create or modify a
+`DecisionFeatureActivation`. Economic authority is a separate append-only transition log with the
+only forward transitions `DISABLED → SHADOW → PAPER_CANARY → PAPER_ACTIVE → LIVE_CANARY →
+LIVE_ACTIVE`. Any state may transition to `DISABLED` or its declared prior safe activation.
+Canary scope, capital/risk caps, fixed horizon, success gates, rollback triggers, exact artifact
+bindings, and approver are content-hashed before execution. A cap breach, safety trigger, or failed
+horizon atomically restores the rollback activation and appends a rollback receipt.
 
 ```python
 from typing import Protocol
@@ -4020,8 +4674,8 @@ class PromotionAuthority:
         return PromotionDecision.approved(approved_by=approver_id or proposal.policy.policy_id)
 
 
-class ActiveReleasePort(Protocol):
-    def activate_and_append_event(
+class SemanticReleasePointerPort(Protocol):
+    def promote_and_append_event(
         self,
         release_id: str,
         *,
@@ -4032,7 +4686,7 @@ class ActiveReleasePort(Protocol):
 
 
 class PromotionPublisher:
-    def __init__(self, releases: ActiveReleasePort) -> None:
+    def __init__(self, releases: SemanticReleasePointerPort) -> None:
         self._releases = releases
 
     def publish(
@@ -4044,7 +4698,7 @@ class PromotionPublisher:
     ) -> UUID:
         if decision.status is not PromotionStatus.APPROVED or decision.approved_by is None:
             raise PermissionError("only an approved promotion decision can activate a release")
-        return self._releases.activate_and_append_event(
+        return self._releases.promote_and_append_event(
             release_id,
             approved_by=decision.approved_by,
             expected_active_release_id=prior_release_id,
@@ -4052,7 +4706,7 @@ class PromotionPublisher:
 
 
 class ShadowMonitor:
-    def __init__(self, releases: ActiveReleasePort) -> None:
+    def __init__(self, releases: SemanticReleasePointerPort) -> None:
         self._releases = releases
 
     def observe(self, promotion_id: UUID, *, safety_regression: bool) -> str | None:
@@ -4064,16 +4718,21 @@ class ShadowMonitor:
         )
 ```
 
+`20260721_0004_semantic_improvement.py` declares `revision = "20260721_0004"` and
+`down_revision = "20260721_0003"`. In addition to the improvement artifacts, it creates insert-only
+semantic-promotion, decision-feature-activation, canary-manifest, canary-receipt, and rollback tables
+with UPDATE/DELETE rejection triggers.
+
 - [ ] **Step 4: Verify authority, offline-only behavior, and rollback**
 
-Run: `uv run pytest tests/unit/semantic/test_improvement_loop.py tests/unit/semantic/test_promotion_authority.py -v && uv run mypy src/trading_os/semantic/improvement`
+Run: `uv run pytest tests/unit/semantic/test_improvement_loop.py tests/unit/semantic/test_promotion_authority.py tests/unit/semantic/test_decision_feature_activation.py -v && uv run mypy src/trading_os/semantic/improvement`
 
-Expected: tests PASS; no role has a graph-write or active-release mutation port.
+Expected: tests PASS; no agent role has a graph-write or decision-feature-activation mutation port.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/trading_os/semantic/improvement alembic/versions/0004_semantic_improvement.py tests/unit/semantic/test_improvement_loop.py tests/unit/semantic/test_promotion_authority.py
+git add src/trading_os/semantic/improvement alembic/versions/20260721_0004_semantic_improvement.py tests/unit/semantic/test_improvement_loop.py tests/unit/semantic/test_promotion_authority.py tests/unit/semantic/test_decision_feature_activation.py
 git commit -m "feat: govern semantic diagnosis promotion and rollback"
 ```
 
@@ -4095,7 +4754,10 @@ git commit -m "feat: govern semantic diagnosis promotion and rollback"
 
 **Interfaces:**
 - Consumes: Tasks 1–14 and the existing EOD orchestration boundary.
-- Produces: `ReasoningCycle.run(request: ReasoningCycleRequest) -> InstrumentBeliefState`, `SemanticDecisionHandoff.prepare(request, strategy_id) -> DecisionFeatureSet`, degraded relational fallback, sealed audit trace, and ontology reasoning promotion evidence.
+- Produces: `ReasoningCycle.run(request) -> InstrumentBeliefState`,
+  `SemanticDecisionHandoff.prepare(...) -> ActivatedDecisionInputs`, explicitly governed relational
+  fallback, sealed retrieval/audit receipts, semantic promotion evidence, and the exact Trading OS
+  integration contract.
 
 - [ ] **Step 1: Write complete-cycle, fallback, and restart tests**
 
@@ -4106,6 +4768,19 @@ async def test_cycle_returns_snapshot_bound_belief(reasoning_cycle, cycle_reques
     assert state.semantic_snapshot_id == cycle_request.semantic_snapshot_id
     assert state.validated_data_snapshot_id == cycle_request.validated_data_snapshot_id
     assert state.assessments
+
+
+async def test_shadow_activation_has_no_economic_inputs(handoff, shadow_request) -> None:
+    result = await handoff.prepare(shadow_request, strategy_id="factor_tilt_v1")
+    assert result.decision_features is None
+    assert result.risk_overlays is None
+    assert result.hot_path_candidate is None
+
+
+async def test_active_handoff_binds_exact_activation(handoff, paper_canary_request) -> None:
+    result = await handoff.prepare(paper_canary_request, strategy_id="factor_tilt_v1")
+    assert result.activation_id == paper_canary_request.activation_id
+    assert all(value <= 1 for value in result.risk_overlays.multipliers.values())
 ```
 
 ```python
@@ -4158,13 +4833,17 @@ Expected: FAIL on missing semantic cycle/bootstrap modules.
 - [ ] **Step 3: Implement idempotent composition and update Trading OS integration**
 
 `ReasoningCycle` loads exact data/semantic snapshots, runs approved queries, builds all six packets,
-constructs the belief state, seals an audit event, and returns it. Fuseki/Neo4j failure invokes the
-relational champion and marks degraded state; baseline failure aborts decisioning. The EOD cycle
-will pass the belief state through `DecisionFeatureProjector` before deterministic strategy policy.
+constructs the belief state, seals an audit event, and returns it. A normalized availability error
+may invoke a query-pack-declared equivalent relational template and marks degraded state; integrity,
+binding, decode, or missing-equivalence errors fail closed. Baseline failure aborts decisioning. The
+EOD cycle passes the belief state through `DecisionFeatureProjector`, the exact activated
+`DeterministicStrategyPolicy`, and the tighten-only risk projector.
 `semantic/handoff.py` exposes this typed boundary without importing control or evaluation packages
-that do not exist yet. Update the Trading OS plan: this plan augments old Tasks 12–13, replaces old
-Tasks 15–17, and preserves Task 14; old Task 18 and later consume `DecisionFeatureSet`; old Task 32 calls `ReasoningCycle`; old Task 34 includes
-semantic promotion evidence; old Task 35 remains the causal replay specialization.
+that do not exist yet. Update the Trading OS plan: this plan augments Tasks 12–13, replaces Tasks
+15–17, and preserves Task 14; Task 18 consumes only an activated `HotPathCandidate`; Task 19 consumes
+`RiskOverlaySet`; Task 32 calls `ReasoningCycle` and `SemanticDecisionHandoff`; Task 34 evaluates
+semantic promotion without activation; Task 35 replays sealed relationship packets and policy
+releases; Task 36 enforces the paper/live canary state machine.
 
 ```python
 # src/trading_os/semantic/bootstrap.py
@@ -4190,11 +4869,25 @@ its exact release ID through `OntologyReleaseRegistry.get_exact()` before applyi
 
 ```python
 # src/trading_os/semantic/handoff.py
+class ActivatedDecisionInputs(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    activation_id: str
+    activation_mode: ActivationMode
+    belief_state_id: str
+    decision_features: DecisionFeatureSet | None
+    risk_overlays: RiskOverlaySet | None
+    hot_path_candidate: HotPathCandidate | None
+    audit_receipt_id: str
+
+
 class SemanticDecisionHandoff:
     def __init__(
         self,
         reasoning: ReasoningCycle,
         projector: DecisionFeatureProjector,
+        risk_projector: RiskOverlayProjector,
+        activations: DecisionFeatureActivationPort,
+        strategy_policies: DeterministicStrategyPolicyRegistry,
     ) -> None:
         self._reasoning = reasoning
         self._projector = projector
@@ -4204,9 +4897,24 @@ class SemanticDecisionHandoff:
         request: ReasoningCycleRequest,
         *,
         strategy_id: str,
-    ) -> DecisionFeatureSet:
+    ) -> ActivatedDecisionInputs:
         belief = await self._reasoning.run(request)
-        return self._projector.project(belief, strategy=strategy_id)
+        activation = await self._activations.get_exact(request.activation_id)
+        activation.assert_exact_artifact_bindings(request.decision_binding)
+        if activation.mode in {ActivationMode.DISABLED, ActivationMode.SHADOW}:
+            return ActivatedDecisionInputs.shadow(belief=belief, activation=activation)
+        features = self._projector.project(belief, strategy=strategy_id)
+        overlays = self._risk_projector.project(belief, policy=activation.risk_overlay_policy)
+        candidate = self._strategy_policies.get_exact(
+            activation.deterministic_strategy_policy_release_id
+        ).evaluate(features)
+        return ActivatedDecisionInputs.seal(
+            belief=belief,
+            activation=activation,
+            decision_features=features,
+            risk_overlays=overlays,
+            hot_path_candidate=candidate,
+        )
 ```
 
 ```python
@@ -4223,6 +4931,15 @@ class RelationalChampionUnavailable(RuntimeError):
     pass
 
 
+class DecisionRuntimeBinding(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    semantic_query: SemanticQueryBinding
+    reasoning_policy_release_id: str
+    support_rule_release_id: str
+    feature_policy_release_id: str
+    activation_id: str
+
+
 class ReasoningCycleRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     cycle_id: str
@@ -4230,7 +4947,13 @@ class ReasoningCycleRequest(BaseModel):
     decision_cutoff: datetime
     validated_data_snapshot_id: str
     semantic_snapshot_id: str
+    projection_receipt_id: str
     ontology_release_id: str
+    query_pack_release_id: str
+    reasoning_policy_release_id: str
+    support_rule_release_id: str
+    feature_policy_release_id: str
+    activation_id: str
     approved_queries: tuple[EvidenceQuery, ...]
     portfolio_snapshot: PortfolioSnapshot
 
@@ -4240,13 +4963,36 @@ class ReasoningCycleRequest(BaseModel):
             raise ValueError("decision cutoff cannot follow reasoning time")
         return self
 
+    @property
+    def semantic_binding(self) -> SemanticQueryBinding:
+        return SemanticQueryBinding(
+            data_snapshot_id=self.validated_data_snapshot_id,
+            semantic_snapshot_id=self.semantic_snapshot_id,
+            projection_receipt_id=self.projection_receipt_id,
+            ontology_release_id=self.ontology_release_id,
+            query_pack_release_id=self.query_pack_release_id,
+            decision_cutoff=self.decision_cutoff,
+        )
+
+    @property
+    def decision_binding(self) -> DecisionRuntimeBinding:
+        return DecisionRuntimeBinding(
+            semantic_query=self.semantic_binding,
+            reasoning_policy_release_id=self.reasoning_policy_release_id,
+            support_rule_release_id=self.support_rule_release_id,
+            feature_policy_release_id=self.feature_policy_release_id,
+            activation_id=self.activation_id,
+        )
+
 
 class ReasoningResultStorePort(Protocol):
-    async def get(self, cycle_id: str) -> InstrumentBeliefState | None: ...
+    async def get(self, cycle_id: str, *, binding_hash: str) -> InstrumentBeliefState | None: ...
     async def put_if_absent(
         self,
         cycle_id: str,
         state: InstrumentBeliefState,
+        *,
+        binding_hash: str,
     ) -> InstrumentBeliefState: ...
 
 
@@ -4255,11 +5001,15 @@ class SnapshotBundlePort(Protocol):
         self,
         validated_data_snapshot_id: str,
         semantic_snapshot_id: str,
+        projection_receipt_id: str,
     ) -> SnapshotBundle: ...
 
 
 class QueryBatchPort(Protocol):
-    async def execute_all(self, queries: tuple[EvidenceQuery, ...]) -> tuple[EvidenceAnswer, ...]: ...
+    async def execute_all(
+        self,
+        queries: tuple[EvidenceQuery, ...],
+    ) -> tuple[QueryExecutionResult, ...]: ...
 
 
 class PacketBuilderSet(Protocol):
@@ -4322,35 +5072,48 @@ class ReasoningCycle:
         self._results = results
 
     async def run(self, request: ReasoningCycleRequest) -> InstrumentBeliefState:
-        existing = await self._results.get(request.cycle_id)
-        if existing is not None:
-            return existing
         snapshots = await self._snapshots.load_exact(
             request.validated_data_snapshot_id,
             request.semantic_snapshot_id,
+            request.projection_receipt_id,
         )
         if any(
             (
                 query.validated_data_snapshot_id,
                 query.semantic_snapshot_id,
+                query.projection_receipt_id,
                 query.ontology_release_id,
+                query.query_pack_release_id,
                 query.decision_cutoff,
             )
             != (
                 request.validated_data_snapshot_id,
                 request.semantic_snapshot_id,
+                request.projection_receipt_id,
                 request.ontology_release_id,
+                request.query_pack_release_id,
                 request.decision_cutoff,
             )
             for query in request.approved_queries
         ):
             raise ValueError("every query must bind the requested snapshots, release, and cutoff")
+        cache_binding = canonical_sha256(request.decision_binding.model_dump(mode="json"))
+        existing = await self._results.get(request.cycle_id, binding_hash=cache_binding)
+        if existing is not None:
+            return existing
         try:
-            answers = await self._queries.execute_all(request.approved_queries)
+            query_results = await self._queries.execute_all(request.approved_queries)
             retrieval_path = "semantic"
-        except SemanticProjectionUnavailable:
-            answers = await self._relational.execute_all(request.approved_queries)
+        except SemanticProjectionUnavailable as error:
+            fallback_queries = self._query_pack.equivalent_relational_queries(
+                request.approved_queries,
+                normalized_error=error,
+            )
+            if fallback_queries is None:
+                raise
+            query_results = await self._relational.execute_all(fallback_queries)
             retrieval_path = "relational"
+        answers = tuple(result.answer for result in query_results)
         packets = await self._packet_builders.build_all(
             snapshots,
             answers,
@@ -4370,7 +5133,11 @@ class ReasoningCycle:
             retrieval_path=retrieval_path,
         )
         await self._audit.append_once(event, idempotency_key=request.cycle_id)
-        return await self._results.put_if_absent(request.cycle_id, state)
+        return await self._results.put_if_absent(
+            request.cycle_id,
+            state,
+            binding_hash=cache_binding,
+        )
 ```
 
 Add this exact operational note to `README.md`:
@@ -4379,8 +5146,9 @@ Add this exact operational note to `README.md`:
 ## Semantic reasoning
 
 Ontology source and SHACL constraints live under `ontology/` and are canonical. Postgres stores
-append-only evidence; Fuseki and Neo4j are rebuildable projections sealed by `SemanticSnapshot`.
-Decisioning always binds an exact data snapshot, semantic snapshot, ontology release, and cutoff.
+append-only evidence; Fuseki and Neo4j are rebuildable projections sealed by a separate
+`SemanticProjectionReceipt`. Decisioning always binds an exact data snapshot, semantic snapshot,
+projection receipt, ontology release, query-pack release, reasoning/feature policies, and cutoff.
 If a semantic projection is unavailable, reasoning degrades explicitly to the permanent relational
 champion; if that champion is unavailable, decisioning fails closed.
 ```
@@ -4389,8 +5157,9 @@ Add this exact repository rule to `CLAUDE.md`:
 
 ```markdown
 - Never write directly to Fuseki or Neo4j from runtime code. Change Git-owned ontology source or
-  append evidence, rebuild both projections, and seal a new SemanticSnapshot. The deterministic
-  trading path may consume only DecisionFeatureSet, never raw narrative or graph handles.
+  append evidence, compute a new SemanticSnapshot, rebuild both projections with its final ID, and
+  seal a SemanticProjectionReceipt. The deterministic trading path may consume only an activated
+  DecisionFeatureSet and tighten-only RiskOverlaySet, never raw narrative or graph handles.
 ```
 
 - [ ] **Step 4: Run the full semantic and boundary verification suite**
@@ -4414,19 +5183,24 @@ git commit -m "feat: compose auditable semantic reasoning cycle"
 
 ## Final Acceptance Checklist
 
-- [ ] Ontology release hashes are reproducible; incompatible changes require a MAJOR release and migration.
+- [ ] Ontology, query-pack, reasoning/support-rule, and feature-policy release hashes are independently reproducible; every meaning-changing artifact participates in compatibility checks.
 - [ ] Released IRIs remain stable and no runtime store can mutate ontology source.
 - [ ] Source, observation, claim, admission, identity, and improvement tables reject UPDATE/DELETE.
-- [ ] False fuzzy matches never auto-merge; planted future facts never enter a decision snapshot.
+- [ ] Typed identity/crosswalk/alias records prevent cross-type, cross-venue, and ticker-reuse collisions; false fuzzy matches never auto-merge.
+- [ ] Availability state, not event date alone, excludes planted future/unknown/inconsistent facts.
 - [ ] Relational retrieval runs with Fuseki, Neo4j, and LLM services unavailable.
-- [ ] RDF and Neo4j projections rebuild from one manifest and pass exact assertion equivalence.
-- [ ] Decision queries are approved templates with typed parameters, cutoff, allowlists, and depth caps.
+- [ ] Final `SemanticSnapshotId` is computed before projection; RDF and Neo4j carry it and a separate sealed receipt proves assertion and approved-entailment equivalence.
+- [ ] Decision queries bind the full snapshot/release/receipt/cutoff context and emit sealed retrieval receipts.
+- [ ] Transport/protocol/integrity errors normalize consistently; only declared equivalent templates may fall back.
 - [ ] All six evidence domains emit deterministic, snapshot-bound packets with provenance and missingness.
-- [ ] Conflicting evidence produces CONTESTED; missing required knowledge produces INSUFFICIENT/unknown.
+- [ ] Versioned support rules ground every assessment in supporting/refuting observations; conflicts produce CONTESTED and missing requirements produce INSUFFICIENT/unknown.
 - [ ] `InstrumentBeliefState` contains no trade parameter or universal confidence/probability.
 - [ ] Hot-path modules cannot import RDF, Neo4j, Source Record, LLM, narrative, or unrestricted query types.
 - [ ] Every challenger is compared with the permanent relational champion on holdout/adversarial cases.
+- [ ] Promotion requires predeclared primary metric, minimum effect, multiplicity correction, and fixed retirement horizon; contaminated historical LLM cells are excluded.
 - [ ] High-impact changes cannot promote without a different human approver.
 - [ ] Exhausted remediation budget pauses ontology expansion while the baseline remains active.
-- [ ] Shadow regression automatically restores the prior release and appends a rollback event.
+- [ ] Semantic promotion alone has no economic authority; immutable activation cannot skip paper/live canaries.
+- [ ] Canary cap/safety regression restores the prior safe activation and appends a rollback receipt.
+- [ ] `RiskOverlaySet` can only tighten or veto, and no legacy `ExposureVector` reaches resumed Trading OS tasks.
 - [ ] Semantic projection failure degrades explicitly to relational retrieval; baseline failure aborts decisioning.
