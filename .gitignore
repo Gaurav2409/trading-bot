@@ -36,6 +36,10 @@ logs/
 credentials/
 order_logs/
 
+# Scratch / local tickets (never commit)
+.scratch/
+.worktrees/
+
 # macOS
 .DS_Store
 
