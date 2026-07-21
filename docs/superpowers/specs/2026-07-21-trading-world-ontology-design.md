@@ -1,6 +1,6 @@
 # Trading World Ontology — Design Amendment
 
-**Status:** Design approved; written amendment awaiting file review
+**Status:** Approved on 2026-07-21
 
 **Amends:** `2026-07-20-trading-os-design.md`, especially D13, D14/D14a, D28, and D30
 **Research basis:** `docs/research/11-trading-world-ontology.md`
