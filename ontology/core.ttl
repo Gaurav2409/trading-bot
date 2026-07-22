@@ -1,0 +1,32 @@
+@prefix tw:   <https://trading-os.example/ontology/trading-world#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+tw:TradingWorld a owl:Ontology ;
+    rdfs:label "Trading World core vocabulary" .
+
+# Identity and tradability
+tw:LegalParty a owl:Class ; rdfs:label "Legal Party" .
+tw:Issuer a owl:Class ; rdfs:subClassOf tw:LegalParty ; rdfs:label "Issuer" .
+tw:Security a owl:Class ; rdfs:label "Security" .
+tw:Listing a owl:Class ; rdfs:label "Listing" .
+tw:BrokerageAccount a owl:Class ; rdfs:label "Brokerage Account" .
+
+# Evidence and world state
+tw:SourceRecord a owl:Class ; rdfs:label "Source Record" .
+tw:Observation a owl:Class ; rdfs:label "Observation" .
+tw:Claim a owl:Class ; rdfs:label "Claim" .
+tw:WorldEvent a owl:Class ; rdfs:label "World Event" .
+tw:EvidencePacket a owl:Class ; rdfs:label "Evidence Packet" .
+tw:PortfolioSnapshot a owl:Class ; rdfs:label "Portfolio Snapshot" .
+
+# Provenance and time properties
+tw:issuedBy a owl:ObjectProperty ; rdfs:domain tw:Security ; rdfs:range tw:Issuer .
+tw:listedAs a owl:ObjectProperty ; rdfs:domain tw:Security ; rdfs:range tw:Listing .
+tw:supportedBy a owl:ObjectProperty ; rdfs:domain tw:Claim ; rdfs:range tw:SourceRecord .
+tw:publishedAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+tw:effectiveAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+tw:receivedAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+tw:sourceRecordHash a owl:DatatypeProperty ; rdfs:range xsd:string .

@@ -11,9 +11,11 @@ from trading_os.brokers.models import (
     OrderAck,
     OrderRequest,
     OrderSide,
+    OrderType,
     PositionObservation,
 )
 from trading_os.kernel.ids import AccountId, SnapshotId
+from trading_os.policy.capability import AuthorityDecision
 
 BROKER = "kite"
 
@@ -124,8 +126,39 @@ class KiteBroker:
             update={"received_at": received_at, "missing_segments": frozenset(missing)}
         )
 
-    async def submit_order(self, request: OrderRequest) -> OrderAck:
-        raise LiveWriteDisabled("Kite live writes are disabled until Task 15")
+    async def submit_order(
+        self, request: OrderRequest, authority: AuthorityDecision | None = None
+    ) -> OrderAck:
+        if authority is None or not authority.allowed:
+            reason = "no authority" if authority is None else authority.reason
+            raise LiveWriteDisabled(f"Kite live write denied: {reason}")
+        import anyio
+
+        # India cash equity: only limit / stop-limit reach the SDK; never market.
+        kite_order_type = "LIMIT" if request.order_type is OrderType.LIMIT else "SL"
+        response = await anyio.to_thread.run_sync(
+            lambda: self._client.place_order(
+                variety="regular",
+                exchange=str(request.instrument_id).split(":", 1)[0],
+                tradingsymbol=str(request.instrument_id).split(":", 1)[1],
+                transaction_type=request.side.value.upper(),
+                quantity=request.quantity,
+                product="CNC",
+                order_type=kite_order_type,
+                price=request.limit_price_minor / 100,
+                tag=request.client_order_id[:20],
+            )
+        )
+        return OrderAck(
+            client_order_id=request.client_order_id,
+            broker_order_id=str(response["order_id"]),
+            accepted_at=datetime.now(UTC),
+            status="accepted",
+        )
 
     async def cancel_order(self, broker_order_id: str) -> None:
-        raise LiveWriteDisabled("Kite live writes are disabled until Task 15")
+        import anyio
+
+        await anyio.to_thread.run_sync(
+            lambda: self._client.cancel_order(variety="regular", order_id=broker_order_id)
+        )

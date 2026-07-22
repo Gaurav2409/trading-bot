@@ -1,0 +1,38 @@
+@prefix tw:   <https://trading-os.example/ontology/trading-world#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+tw:SourceRecordShape a sh:NodeShape ;
+    sh:targetClass tw:SourceRecord ;
+    sh:property [
+        sh:path tw:publishedAt ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path tw:receivedAt ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path tw:sourceRecordHash ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] .
+
+tw:SecurityShape a sh:NodeShape ;
+    sh:targetClass tw:Security ;
+    sh:property [
+        sh:path tw:issuedBy ;
+        sh:class tw:Issuer ;
+        sh:minCount 1 ;
+    ] .
+
+tw:EvidencePacketShape a sh:NodeShape ;
+    sh:targetClass tw:EvidencePacket ;
+    sh:property [
+        sh:path tw:supportedBy ;
+        sh:minCount 0 ;
+    ] .
