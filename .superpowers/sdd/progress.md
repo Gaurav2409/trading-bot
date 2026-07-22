@@ -44,8 +44,8 @@
 | 11 | Typed research evidence, relational champion, ontology kernel | ✅ done | a2b7888 | day-5 boundary |
 | 12 | Deterministic sizing, risk, CAS reservations | ✅ done | a12fc35 | day-6 boundary |
 | 13 | India + US compliance gates | ✅ done | 832388a | day-6 boundary |
-| 14 | Durable execution, kill states, protection | ⬜ not started | — | — |
-| 15 | Capability-gated Kite + Alpaca writes | ⬜ not started | — | — |
+| 14 | Durable execution, kill states, protection | ✅ done | cd0735d | day-7 boundary |
+| 15 | Capability-gated Kite + Alpaca writes | ✅ done | 0eba3c4 | day-7 boundary |
 | 16 | Reconciliation + retrospective loop | ⬜ not started | — | — |
 | 17 | Scheduler, API, operator console | ⬜ not started | — | — |
 | 18 | Two-broker replay, readiness, scoped T0 authority | ⬜ not started | — | — |
