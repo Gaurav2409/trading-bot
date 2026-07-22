@@ -112,11 +112,31 @@ _Avoid_: Account default, inherited permission
 An immutable definition of the evidence thresholds and review windows required to expand or reduce live authority.
 _Avoid_: Fixed waiting period
 
+**Source Coverage Policy Release**:
+An immutable, effective-dated definition of which source channels are applicable, mandatory, optional, entitled, fresh enough, and correctly parsed for a governed research purpose.
+_Avoid_: URL list, watcher configuration
+
+**Tool Capability Release**:
+An immutable definition of a typed, bounded, pure or read-only operation that a specific Agent Profile Release may expose within a frozen snapshot scope.
+_Avoid_: Function list, plugin permission
+
+**LLM Routing Policy Release**:
+An immutable definition of eligible model capabilities, provider routes, fallbacks, budgets, and fail-closed behavior for one or more LLM Roles.
+_Avoid_: Model name, provider config
+
 ## Evidence and world state
 
 **Source Record**:
 An immutable captured item supplied by a publisher or vendor, including its origin and availability times.
 _Avoid_: Fact
+
+**Source Coverage Receipt**:
+An immutable observation of which applicable source channels a watcher intended, attempted, captured, omitted, delayed, or rejected for a time range and frozen snapshot.
+_Avoid_: Poll succeeded, coverage flag
+
+**Source Coverage Status**:
+A deterministic reconciliation of a Source Coverage Policy Release with Source Coverage Receipts, classifying coverage as complete, degraded, contradictory, insufficient, suspended, or inapplicable.
+_Avoid_: Agent opinion, source score
 
 **Evidence Span**:
 The exact portion of a Source Record that supports or refutes a Claim.
@@ -143,6 +163,30 @@ An immutable record of a Trading OS state transition, such as a snapshot build, 
 _Avoid_: Market event, world event
 
 ## Reasoning
+
+**Domain Agent Harness**:
+The single governed Research Agent Port implementation that resolves immutable profiles, executes bounded typed trajectories, records canonical run events, and returns admitted categorical Evidence Packets.
+_Avoid_: Domain-specific agent, autonomous research bot
+
+**Agent Profile Release**:
+An immutable manifest for one evidence-domain purpose that references its trajectory, prompts, tool capabilities, source coverage, output schema, LLM routing, budgets, failure policy, and evaluation policy.
+_Avoid_: Agent instance, mutable configuration
+
+**Trajectory Release**:
+An immutable typed graph of registered deterministic and agentic nodes, bounded transitions, capability grants, and terminal outcomes used as the source of truth for execution and workbench rendering.
+_Avoid_: Python workflow, LangGraph object
+
+**LLM Role**:
+A provider-neutral structured invocation responsibility, selected by immutable routing policy and unable to fetch sources, execute tools directly, persist memory, or activate policy.
+_Avoid_: Model, agent persona
+
+**Agent Run Ledger**:
+The canonical append-only record of an agent run's immutable release closure, snapshot scope, node transitions, model and capability boundaries, budgets, admission result, and terminal compatibility outcome.
+_Avoid_: LangGraph checkpoint, provider trace
+
+**Definition Proposal**:
+An immutable candidate change to a prompt, profile, trajectory, capability, source policy, routing policy, or evaluation definition, with provenance and evaluation results but no activation authority.
+_Avoid_: Live config update, self-improvement
 
 **Instrument Hypothesis**:
 A falsifiable proposition about a Security or Listing with an explicit direction, horizon, assumptions, and invalidation conditions.
