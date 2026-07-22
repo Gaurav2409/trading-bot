@@ -136,7 +136,10 @@ async def test_dual_listed_complete_admits_supportive_categorical_packet() -> No
     )
 
 
-async def test_orchestrator_path_is_replay_deterministic() -> None:
+async def test_orchestrator_path_is_recompute_deterministic() -> None:
+    # Two independent harnesses (each with its own fresh ledger) produce the
+    # identical packet — fresh-recompute determinism. This is NOT resume: a
+    # genuine same-ledger replay is covered by the catastrophe test below.
     records = _dual_listed_records()
     first = await ResearchOrchestrator(
         _build_harness(records, _judge_role(records))
@@ -145,3 +148,23 @@ async def test_orchestrator_path_is_replay_deterministic() -> None:
         _build_harness(records, _judge_role(records))
     ).run(_question(records))
     assert first == second
+
+
+async def test_same_ledger_replay_is_catastrophic_none_with_observability() -> None:
+    # A genuine replay through the port against the SAME canonical ledger (same
+    # deterministic run_id) is a checkpoint-vs-ledger disagreement: spec §9
+    # catastrophic infrastructure failure. It must return None WITH catastrophic
+    # observability, not be silently swallowed. The P0 harness does not resume
+    # in-port; replay uses a fresh ledger via the replay composition.
+    records = _dual_listed_records()
+    harness = _build_harness(records, _judge_role(records))
+    question = _question(records)
+    first = await harness.investigate(question)
+    assert isinstance(first, EvidencePacket)
+    # Second investigate reuses the same ledger -> run_started at sequence 0
+    # conflicts with the existing run.
+    second = await harness.investigate(question)
+    assert second is None
+    assert any(
+        reason == "ledger_conflict_on_start" for _run, reason in harness.catastrophes
+    )

@@ -24,7 +24,7 @@ unresolved immutable release closure. Neither a ``None`` nor an explicit-missing
 outcome disables the relational champion.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
@@ -46,6 +46,7 @@ from trading_os.agents.corporate_events import (
 from trading_os.agents.ledger import (
     AgentRunEvent,
     AgentRunLedger,
+    LedgerConflict,
     LedgerUnavailable,
 )
 from trading_os.agents.llm import LLMRole
@@ -142,6 +143,7 @@ class DomainAgentHarness:
         source_records: tuple[SourceRecord, ...],
         snapshot_scope: Mapping[str, tuple[str, ...]],
         gather_replay_key: str = "gather",
+        catastrophe_observer: "Callable[[str, str], None] | None" = None,
     ) -> None:
         self._releases = releases
         self._compiler = compiler
@@ -154,6 +156,11 @@ class DomainAgentHarness:
         self._source_records = source_records
         self._snapshot_scope = snapshot_scope
         self._gather_replay_key = gather_replay_key
+        self._catastrophe_observer = catastrophe_observer
+        # Best-effort catastrophe log, always populated even without an injected
+        # observer, so a caller can assert catastrophic observability after a
+        # None outcome (the canonical ledger is unusable on these paths).
+        self.catastrophes: list[tuple[str, str]] = []
 
     async def investigate(
         self, question: ResearchQuestion
@@ -175,6 +182,18 @@ class DomainAgentHarness:
                 )
             )
         except LedgerUnavailable:
+            self._observe_catastrophe(run_id, "ledger_unavailable")
+            return None
+        except LedgerConflict:
+            # A run_started append at sequence 0 that conflicts means this
+            # deterministic run_id already exists in the canonical ledger — a
+            # replay/resume attempt through the port. Per spec §9 a checkpoint-
+            # vs-ledger disagreement is a catastrophic infrastructure failure:
+            # return None with catastrophic observability rather than letting
+            # the orchestrator's blanket handler swallow it silently. The P0
+            # harness does not implement in-port resume; a genuine replay uses
+            # a fresh ledger via the replay composition (see composition.py).
+            self._observe_catastrophe(run_id, "ledger_conflict_on_start")
             return None
 
         workspace = self._build_workspace(question, closure.content_hash)
@@ -203,7 +222,11 @@ class DomainAgentHarness:
             packet = self._explicit_missing_packet(
                 question, "categorical_seam_violation", reason=str(violation)
             )
-        except LedgerUnavailable:
+        except (LedgerUnavailable, LedgerConflict):
+            # Canonical ledger unavailable or a checkpoint/ledger disagreement
+            # mid-run is catastrophic (spec §9, §16): None, never positive
+            # evidence, and the checkpoint never overwrites canonical events.
+            self._observe_catastrophe(run_id, "ledger_failure_mid_run")
             return None
 
         # Idempotent defence: re-validate at the port boundary regardless of
@@ -508,6 +531,19 @@ class DomainAgentHarness:
             source_record_ids=(),
             eligibility_effect="neutral",
         )
+
+    def _observe_catastrophe(self, run_id: str, reason: str) -> None:
+        """Record a catastrophic infrastructure failure (spec §9, §16).
+
+        The canonical ledger is unusable on these paths, so the signal goes to a
+        side channel: an injected observer if present, and always the in-harness
+        ``catastrophes`` log. A catastrophe yields ``None`` — never positive
+        evidence — and never disables the relational champion.
+        """
+
+        self.catastrophes.append((run_id, reason))
+        if self._catastrophe_observer is not None:
+            self._catastrophe_observer(run_id, reason)
 
     async def _append_safety_event(
         self, run_id: str, closure_hash: str, question: ResearchQuestion
