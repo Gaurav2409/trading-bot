@@ -1,0 +1,1 @@
+{"root":["./src/app.test.tsx","./src/app.tsx","./src/api.ts","./src/main.tsx","./src/setuptests.ts","./src/vite-env.d.ts","./src/components/candidates.tsx","./src/components/decisiontrace.tsx","./src/components/portfolio.tsx","./src/components/pricechart.tsx","./src/components/retrospectives.tsx","./src/components/riskcontrols.tsx","./e2e/operator.spec.ts"],"version":"5.9.3"}
