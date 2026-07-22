@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
   "alembic>=1.13",
   "alpaca-py>=0.26",
+  "anthropic>=0.117,<0.118",
   "apscheduler>=3.10",
   "asyncpg>=0.29",
   "exchange-calendars>=4.5",
@@ -14,6 +15,7 @@ dependencies = [
   "kiteconnect>=5.0",
   "neo4j>=5.23",
   "numpy>=1.26",
+  "openai>=2.46,<2.47",
   "pandas>=2.2",
   "pydantic>=2.7",
   "pydantic-settings>=2.3",
@@ -63,3 +65,12 @@ strict = true
 python_version = "3.11"
 mypy_path = "src"
 explicit_package_bases = true
+
+# The OpenAI and Anthropic SDKs ship ``py.typed`` and transitively re-export
+# numpy's typed API. numpy's bundled stubs use a 3.12+ ``type`` statement that
+# mypy rejects under the project's 3.11 target, so skip following the provider
+# SDK type graphs. Project code is still checked against their public surface.
+[[tool.mypy.overrides]]
+module = ["openai.*", "anthropic.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true
