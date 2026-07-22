@@ -2,8 +2,33 @@ from hashlib import sha256
 
 from pydantic import BaseModel
 
+from trading_os.app.settings import Settings
 from trading_os.kernel.events import new_event
 from trading_os.ledger.store import EventStore
+from trading_os.research.orchestrator import ResearchAgentPort
+
+
+def build_shadow_agent_port(settings: Settings) -> ResearchAgentPort | None:
+    """Construct the shadow domain-agent port only when explicitly enabled.
+
+    P0 is shadow-only (spec §18). The application refuses to build a harness or
+    reach for a provider client unless ``agent_shadow_enabled`` is set *and*
+    provider credentials are configured. With shadow mode off, or credentials
+    absent, it declines by returning ``None`` — the relational champion runs
+    unchanged. Offline replay wiring is composed separately via
+    ``trading_os.agents.composition.build_shadow_domain_agent`` with injected
+    fixture dependencies; the container never fabricates a live client itself.
+    """
+
+    if not settings.agent_shadow_enabled:
+        return None
+    if settings.agent_provider_api_key is None:
+        return None
+    # Enabling a live provider-backed shadow agent is out of P0 scope: the
+    # container has no live provider adapter wiring yet, so it declines rather
+    # than constructing an unvalidated client. The offline composition path is
+    # the supported P0 entry point.
+    return None
 
 
 class CycleResult(BaseModel, frozen=True):

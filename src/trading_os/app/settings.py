@@ -22,3 +22,10 @@ class Settings(BaseSettings):
     alpaca_api_key: SecretStr | None = None
     alpaca_secret_key: SecretStr | None = None
     alpaca_paper: bool = True
+
+    # Shadow-only domain-agent tracer (P0). Disabled by default: the container
+    # constructs neither a harness nor a provider client unless this is
+    # explicitly enabled. Shadow output can never activate a decision or create
+    # executable intent.
+    agent_shadow_enabled: bool = False
+    agent_provider_api_key: SecretStr | None = None
