@@ -527,7 +527,10 @@ SEC/NSE/BSE corporate-event tracer passes the whole constitutional fixture
 matrix through the unchanged `ResearchAgentPort`; every expected failure returns
 an admitted explicit-missing packet, only ledger/release catastrophe returns
 `None`, and production and replay wirings produce byte-identical packets and
-canonical ledger event hashes. The executable acceptance gate is
+identical canonical ledger event streams. The gate also proves the categorical
+seam has teeth (a bare-number judge assessment becomes a
+`categorical_seam_violation`, not a supportive packet). The executable
+acceptance gate is
 `tests/integration/agents/test_p0_acceptance.py`; the operator-readable outcome
 interpretation (complete, degraded, contradictory, insufficient, catastrophic,
 inapplicable) is documented in

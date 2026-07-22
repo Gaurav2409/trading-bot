@@ -91,7 +91,10 @@ cutoff). `None` still leaves the relational champion fully operational.
 P0 is offline and deterministic. The acceptance suite runs the entire recorded
 fixture matrix through the unchanged `ResearchAgentPort`, twice (production and
 replay wirings), and asserts byte-identical packets and identical canonical
-ledger event hashes. No test requires provider credentials or network access.
+ledger event streams between the two wirings. It also asserts that a
+bare-number judge assessment becomes `categorical_seam_violation` (the seam has
+teeth) and that only catastrophic ledger/release failure returns `None`. No
+test requires provider credentials or network access.
 
 Exact offline command:
 

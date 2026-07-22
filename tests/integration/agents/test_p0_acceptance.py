@@ -5,13 +5,15 @@ plan "P0 completion gate"). It drives every constitutional fixture case through
 the *composed* shadow agent — ``build_shadow_domain_agent`` returning the
 unchanged ``ResearchAgentPort`` — and asserts, for each case, that:
 
-1. production and replay wirings produce a byte-identical packet (offline
-   determinism: same releases, snapshot, fixtures, and frozen clock);
+1. production and replay wirings produce a byte-identical packet AND identical
+   canonical ledger event streams (offline determinism: same releases,
+   snapshot, fixtures, and frozen clock);
 2. the admitted categorical assessment carries the expected status token;
 3. citations are a subset of ``ResearchQuestion.source_record_ids`` (no
    evidence escapes the frozen source scope);
-4. no executable number crosses the seam and only catastrophic ledger/release
-   failure returns ``None``.
+4. no executable number crosses the seam (a bare-number judge assessment
+   becomes ``categorical_seam_violation``, exercised with teeth) and only
+   catastrophic ledger/release failure returns ``None``.
 
 Tests bind at the public port seam only. Expected assessments are an
 independent source of truth — the constitutional applicability/failure rules of
@@ -30,6 +32,7 @@ from trading_os.agents.composition import (
     build_shadow_domain_agent,
 )
 from trading_os.agents.corporate_events import EventJudgement
+from trading_os.agents.harness import deterministic_run_id
 from trading_os.agents.langgraph_engine import LangGraphTrajectoryEngine
 from trading_os.agents.ledger import InMemoryAgentRunLedger
 from trading_os.agents.llm import ExpectedLLMFailure, FixtureLLMRole, LLMRole
@@ -276,8 +279,10 @@ async def test_p0_fixture_matrix_is_offline_deterministic() -> None:
         spec = _case(name)
         question = _question(spec.records)
 
-        production: ResearchAgentPort = build_shadow_domain_agent(_dependencies(spec))
-        replay: ResearchAgentPort = build_shadow_domain_agent(_dependencies(spec))
+        production_deps = _dependencies(spec)
+        replay_deps = _dependencies(spec)
+        production: ResearchAgentPort = build_shadow_domain_agent(production_deps)
+        replay: ResearchAgentPort = build_shadow_domain_agent(replay_deps)
 
         first = await production.investigate(question)
         second = await replay.investigate(question)
@@ -288,6 +293,45 @@ async def test_p0_fixture_matrix_is_offline_deterministic() -> None:
         assert set(first.source_record_ids).issubset(
             set(question.source_record_ids)
         ), name
+
+        # Canonical ledger determinism (spec §9, §22 obligation #1): the two
+        # independent wirings must produce identical canonical event streams,
+        # not merely identical packets. Compare the full event tuples (run_id is
+        # the deterministic run id, so it is stable across wirings).
+        run_id = deterministic_run_id(question)
+        prod_events = await production_deps.ledger.events_for(run_id)
+        replay_events = await replay_deps.ledger.events_for(run_id)
+        assert prod_events == replay_events, f"{name}: ledger streams diverged"
+        assert prod_events, f"{name}: no canonical events recorded"
+
+
+async def test_p0_executable_number_cannot_cross_the_seam() -> None:
+    # Gate obligation #4 with teeth (regression: the prior gate asserted this in
+    # its docstring but no test exercised it — gutting the seam validators kept
+    # the suite green). A judge that emits a bare-number assessment must not
+    # produce a supportive packet; it becomes categorical_seam_violation.
+    spec = _case("nse_only_complete")
+    tampered = _CaseSpec(
+        records=spec.records,
+        policy=spec.policy,
+        role_factory=lambda: FixtureLLMRole(
+            {
+                "judge:issuer:1:board_meeting": EventJudgement(
+                    assessment="agent_2500",
+                    support_record_ids=("nse:1",),
+                    contradiction_record_ids=(),
+                    missing=(),
+                )
+            }
+        ),
+        expected_status="categorical_seam_violation",
+    )
+    agent = build_shadow_domain_agent(_dependencies(tampered))
+    packet = await agent.investigate(_question(spec.records))
+    assert isinstance(packet, EvidencePacket)
+    assert packet.assessment == "categorical_seam_violation"
+    assert packet.eligibility_effect == "neutral"
+    assert packet.source_record_ids == ()
 
 
 async def test_p0_every_expected_failure_is_admitted_not_none() -> None:
