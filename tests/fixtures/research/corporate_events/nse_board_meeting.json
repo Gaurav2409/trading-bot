@@ -1,0 +1,12 @@
+{
+  "symbol": "TESTCO",
+  "isin": "INE000A01001",
+  "subject": "Board Meeting Intimation",
+  "category": "Board Meeting",
+  "issuerId": "issuer:1",
+  "announcementId": "NSE-2026-0001",
+  "broadcastDateTime": "2026-07-22T09:15:00+05:30",
+  "dissemDateTime": "2026-07-22T09:20:00+05:30",
+  "eventDate": "2026-07-22",
+  "attachmentText": "Board meeting to consider a material definitive agreement."
+}
