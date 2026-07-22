@@ -1,0 +1,30 @@
+@prefix id:   <https://trading-os.example/ontology/identity#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://trading-os.example/ontology/identity>
+    a owl:Ontology ;
+    rdfs:label "Identity canonicalization module" ;
+    owl:versionIRI <https://trading-os.example/ontology/identity/release/v1> .
+
+# ADR-0005: LegalEntity is stable; IssuerRole is a time-scoped role.
+id:LegalEntity a owl:Class ; rdfs:label "Legal Entity" .
+id:IssuerRole a owl:Class ; rdfs:label "Issuer Role" .
+id:Security a owl:Class ; rdfs:label "Security" .
+id:Instrument a owl:Class ; rdfs:label "Instrument" .
+id:Listing a owl:Class ; rdfs:label "Listing" .
+id:Venue a owl:Class ; rdfs:label "Venue" .
+id:BrokerInstrument a owl:Class ; rdfs:label "Broker Instrument" .
+
+# A governed, revocable identity assertion. Identity links go through this, never
+# owl:sameAs (open-world sameAs propagates merges transitively and irreversibly).
+id:IdentityAssertion a owl:Class ; rdfs:label "Identity Assertion" .
+id:assertionStatus a owl:DatatypeProperty ; rdfs:range xsd:string .
+id:assertionConfidence a owl:DatatypeProperty ; rdfs:range xsd:decimal .
+
+# Typed, revocable instrument mapping with a validity interval.
+id:mapsToInstrument a owl:ObjectProperty ; rdfs:range id:Security .
+id:mappingAssertion a owl:ObjectProperty ; rdfs:range id:IdentityAssertion .
+id:validFrom a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+id:validUntil a owl:DatatypeProperty ; rdfs:range xsd:dateTime .

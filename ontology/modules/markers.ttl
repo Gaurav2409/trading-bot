@@ -1,0 +1,21 @@
+@prefix mk:   <https://trading-os.example/ontology/markers#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://trading-os.example/ontology/markers>
+    a owl:Ontology ;
+    rdfs:label "Technical/fundamental/sentiment marker definitions" ;
+    owl:versionIRI <https://trading-os.example/ontology/markers/release/v1> ;
+    owl:imports <https://trading-os.example/ontology/evidence> .
+
+# Typed marker definitions: unit, window, sampling frequency, horizon,
+# calculation version, direction, freshness, corroboration policy.
+mk:MarkerDefinition a owl:Class ; rdfs:label "Marker Definition" .
+mk:unit a owl:DatatypeProperty ; rdfs:range xsd:string .
+mk:window a owl:DatatypeProperty ; rdfs:range xsd:string .
+mk:samplingFrequency a owl:DatatypeProperty ; rdfs:range xsd:string .
+mk:horizon a owl:DatatypeProperty ; rdfs:range xsd:string .
+mk:calculationVersion a owl:DatatypeProperty ; rdfs:range xsd:string .
+mk:direction a owl:DatatypeProperty ; rdfs:range xsd:string .
+mk:corroborationPolicy a owl:DatatypeProperty ; rdfs:range xsd:string .

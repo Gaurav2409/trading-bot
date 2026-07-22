@@ -1,0 +1,19 @@
+@prefix bs:   <https://trading-os.example/ontology/beliefstate#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<https://trading-os.example/ontology/beliefstate>
+    a owl:Ontology ;
+    rdfs:label "Belief-state and decision-feature projection module" ;
+    owl:versionIRI <https://trading-os.example/ontology/beliefstate/release/v1> ;
+    owl:imports <https://trading-os.example/ontology/evidence> ,
+                <https://trading-os.example/ontology/markers> .
+
+bs:InstrumentBeliefState a owl:Class ; rdfs:label "Instrument Belief State" .
+bs:DecisionFeatureSet a owl:Class ; rdfs:label "Decision Feature Set" .
+
+# A DecisionFeatureSet may influence economics ONLY through an effective
+# DecisionFeatureActivation. It carries categorical features only (no numbers).
+bs:DecisionFeatureActivation a owl:Class ; rdfs:label "Decision Feature Activation" .
+bs:activatedBy a owl:ObjectProperty ; rdfs:domain bs:DecisionFeatureSet ;
+    rdfs:range bs:DecisionFeatureActivation .

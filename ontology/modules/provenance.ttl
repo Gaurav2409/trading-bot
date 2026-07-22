@@ -1,0 +1,26 @@
+@prefix pv:   <https://trading-os.example/ontology/provenance#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+<https://trading-os.example/ontology/provenance>
+    a owl:Ontology ;
+    rdfs:label "Provenance module (PROV-O aligned)" ;
+    owl:versionIRI <https://trading-os.example/ontology/provenance/release/v1> ;
+    owl:imports <http://www.w3.org/ns/prov> .
+
+pv:SourceRecord a owl:Class ; rdfs:subClassOf prov:Entity ; rdfs:label "Source Record" .
+pv:EvidenceSpan a owl:Class ; rdfs:subClassOf prov:Entity ; rdfs:label "Evidence Span" .
+
+pv:ExtractionActivity a owl:Class ; rdfs:subClassOf prov:Activity ; rdfs:label "Extraction Activity" .
+pv:AdmissionActivity a owl:Class ; rdfs:subClassOf prov:Activity ; rdfs:label "Admission Activity" .
+pv:CorrectionActivity a owl:Class ; rdfs:subClassOf prov:Activity ; rdfs:label "Correction Activity" .
+
+# A correction supersedes an earlier record and generates the correcting record.
+pv:supersedes a owl:ObjectProperty ; rdfs:subPropertyOf prov:used ; rdfs:range pv:SourceRecord .
+pv:generatedRecord a owl:ObjectProperty ; rdfs:subPropertyOf prov:generated ; rdfs:range pv:SourceRecord .
+
+# Forward guidance is explicitly allowed to be effective after it was received;
+# it must NOT be forced through the correction shape.
+pv:ForwardGuidanceRecord a owl:Class ; rdfs:subClassOf pv:SourceRecord ;
+    rdfs:label "Forward Guidance Record" .

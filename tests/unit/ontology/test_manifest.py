@@ -29,6 +29,17 @@ def test_import_closure_accepts_terms_within_declared_imports() -> None:
     verify_import_closure(manifest)  # must not raise
 
 
+def test_all_shipped_modules_have_version_iris_and_closure() -> None:
+    # Regression guard: as modules multiply, every one keeps a versionIRI and the
+    # whole DAG stays closed (no out-of-import term references).
+    manifest = build_module_manifest(Path("ontology"))
+    names = {Path(m.path).name for m in manifest.modules}
+    assert {"core.ttl", "identity.ttl", "time.ttl", "provenance.ttl", "events.ttl"} <= names
+    for module in manifest.modules:
+        assert module.version_iri.endswith("/v1")
+    verify_import_closure(manifest)
+
+
 def test_out_of_closure_reference_fails(tmp_path: Path) -> None:
     # A module that uses a term from a namespace it does not import must fail.
     base = tmp_path / "ontology"

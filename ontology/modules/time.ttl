@@ -1,0 +1,27 @@
+@prefix tm:   <https://trading-os.example/ontology/time#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+
+<https://trading-os.example/ontology/time>
+    a owl:Ontology ;
+    rdfs:label "Time module (bitemporal, OWL-Time aligned)" ;
+    owl:versionIRI <https://trading-os.example/ontology/time/release/v1> ;
+    owl:imports <http://www.w3.org/2006/time> .
+
+# Bitemporal times are never collapsed. There is NO universal
+# occurred-before-published or published<=received axiom.
+tm:occurredAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+tm:effectiveAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+tm:publishedAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+tm:receivedAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+tm:decisionCutoffAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+
+tm:SemanticSnapshot a owl:Class ; rdfs:label "Semantic Snapshot" .
+tm:TimedFact a owl:Class ; rdfs:label "Timed Fact" .
+tm:inSnapshot a owl:ObjectProperty ; rdfs:domain tm:TimedFact ; rdfs:range tm:SemanticSnapshot .
+
+# Validity intervals reuse OWL-Time with a documented half-open convention
+# [hasBeginning, hasEnd); an open interval uses an explicit sentinel, never null.
+tm:ValidityInterval a owl:Class ; rdfs:subClassOf time:Interval .

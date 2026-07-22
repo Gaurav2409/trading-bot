@@ -1,0 +1,21 @@
+@prefix pv:  <https://trading-os.example/ontology/provenance#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+
+# A correction must name both the record it supersedes and the record it
+# generates; a correction lacking a superseded target is rejected (otherwise a
+# restatement creates a silent parallel universe of contradictory records).
+pv:CorrectionShape a sh:NodeShape ;
+    sh:targetClass pv:CorrectionActivity ;
+    sh:property [
+        sh:path pv:supersedes ;
+        sh:minCount 1 ;
+        sh:message "a CorrectionActivity must name the record it supersedes" ;
+    ] ;
+    sh:property [
+        sh:path pv:generatedRecord ;
+        sh:minCount 1 ;
+        sh:message "a CorrectionActivity must name the correcting record it generated" ;
+    ] .
+
+# ForwardGuidanceRecord intentionally has NO effectiveAt<=receivedAt constraint:
+# future-effective guidance is valid and must pass.

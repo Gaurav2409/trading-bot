@@ -1,0 +1,17 @@
+@prefix pf:   <https://trading-os.example/ontology/portfolio#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# Closed projection: only the governed categorical predicates are allowed. Any
+# raw quantity/cash/price/fill literal (e.g. pf:rawQuantity) fails, so custody
+# numbers cannot leak across the research seam.
+pf:PortfolioProjectionShape a sh:NodeShape ;
+    sh:targetClass pf:PortfolioProjection ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [ sh:path pf:concentrationBand ] ;
+    sh:property [ sh:path pf:exposureCategory ] ;
+    sh:property [ sh:path pf:completenessDimension ] ;
+    sh:property [ sh:path pf:policyReleaseId ] ;
+    sh:property [ sh:path pf:partitionAccountId ] ;
+    sh:message "a PortfolioProjection may carry only governed categorical facts, never raw numbers" .

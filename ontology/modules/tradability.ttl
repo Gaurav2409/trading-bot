@@ -1,0 +1,20 @@
+@prefix cap:  <https://trading-os.example/ontology/tradability#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<https://trading-os.example/ontology/tradability>
+    a owl:Ontology ;
+    rdfs:label "Tradability and capability module" ;
+    owl:versionIRI <https://trading-os.example/ontology/tradability/release/v1> ;
+    owl:imports <https://trading-os.example/ontology/identity> .
+
+# Account/snapshot/policy-scoped, deny-by-default. Keeps the broad discovery
+# universe distinct from the account tradable allowlist (spec §4, §8).
+cap:VenueSegment a owl:Class ; rdfs:label "Venue Segment" .
+cap:ListingStatus a owl:Class ; rdfs:label "Listing Status" .
+cap:Restriction a owl:Class ; rdfs:label "Restriction" .
+cap:CircuitBand a owl:Class ; rdfs:label "Circuit / Price Band" .
+cap:DataEntitlement a owl:Class ; rdfs:label "Data Entitlement" .
+cap:AccountCapabilityAssignment a owl:Class ; rdfs:label "Account Capability Assignment" .
+cap:TradabilityRiskPacket a owl:Class ; rdfs:label "Tradability Risk Packet" .
+cap:orderable a owl:DatatypeProperty ; rdfs:range <http://www.w3.org/2001/XMLSchema#boolean> .

@@ -1,0 +1,29 @@
+@prefix erg:  <https://trading-os.example/ontology/evidence#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://trading-os.example/ontology/evidence>
+    a owl:Ontology ;
+    rdfs:label "Evidence and reasoning module" ;
+    owl:versionIRI <https://trading-os.example/ontology/evidence/release/v1> ;
+    owl:imports <https://trading-os.example/ontology/events> ,
+                <https://trading-os.example/ontology/provenance> .
+
+erg:Observation a owl:Class ; rdfs:label "Observation" .
+erg:Claim a owl:Class ; rdfs:label "Claim" .
+erg:AdmittedAssertion a owl:Class ; rdfs:label "Admitted Assertion" .
+erg:Contradiction a owl:Class ; rdfs:label "Contradiction" .
+erg:EvidencePacket a owl:Class ; rdfs:label "Evidence Packet" .
+erg:InstrumentHypothesis a owl:Class ; rdfs:label "Instrument Hypothesis" .
+
+# Source independence: syndicated copies share a SourceFamily and cannot be
+# counted as independent corroboration.
+erg:SourceFamily a owl:Class ; rdfs:label "Source Family" .
+erg:inSourceFamily a owl:ObjectProperty ; rdfs:range erg:SourceFamily .
+erg:AssertionStatus a owl:Class ; rdfs:label "Assertion Status" .
+erg:AdmissionPolicyRelease a owl:Class ; rdfs:label "Admission Policy Release" .
+
+# A contradiction must name the claim/assertion it opposes.
+erg:contradicts a owl:ObjectProperty ; rdfs:domain erg:Contradiction .
+erg:horizon a owl:DatatypeProperty ; rdfs:range xsd:string .

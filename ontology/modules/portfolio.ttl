@@ -1,0 +1,19 @@
+@prefix pf:   <https://trading-os.example/ontology/portfolio#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://trading-os.example/ontology/portfolio>
+    a owl:Ontology ;
+    rdfs:label "Portfolio projection context module" ;
+    owl:versionIRI <https://trading-os.example/ontology/portfolio/release/v1> .
+
+# A PortfolioProjection carries only GOVERNED categorical facts. Raw custody
+# numbers (cash, buying power, order quantity, fill price, cost basis) stay in the
+# operational relational ledger and are never projected (spec §6.2).
+pf:PortfolioProjection a owl:Class ; rdfs:label "Portfolio Projection" .
+pf:concentrationBand a owl:DatatypeProperty ; rdfs:range xsd:string .
+pf:exposureCategory a owl:DatatypeProperty ; rdfs:range xsd:string .
+pf:completenessDimension a owl:DatatypeProperty ; rdfs:range xsd:string .
+pf:policyReleaseId a owl:DatatypeProperty ; rdfs:range xsd:string .
+pf:partitionAccountId a owl:DatatypeProperty ; rdfs:range xsd:string .

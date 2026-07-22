@@ -1,0 +1,22 @@
+@prefix ev:   <https://trading-os.example/ontology/events#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://trading-os.example/ontology/events>
+    a owl:Ontology ;
+    rdfs:label "Events and relationships module" ;
+    owl:versionIRI <https://trading-os.example/ontology/events/release/v1> .
+
+ev:WorldEvent a owl:Class ; rdfs:label "World Event" .
+ev:CorporateEvent a owl:Class ; rdfs:subClassOf ev:WorldEvent ; rdfs:label "Corporate Event" .
+ev:MacroEvent a owl:Class ; rdfs:subClassOf ev:WorldEvent ; rdfs:label "Macro Event" .
+
+# A relationship must be typed: an observed fact, a contractual relationship, a
+# causal hypothesis, or an inference. A causal hypothesis stored as if it were an
+# observed fact would let an unverified narrative cross the decision seam.
+ev:RelationshipAssertion a owl:Class ; rdfs:label "Relationship Assertion" .
+ev:relationshipType a owl:DatatypeProperty ; rdfs:range xsd:string .
+ev:assertionConfidence a owl:DatatypeProperty ; rdfs:range xsd:decimal .
+ev:subject a owl:ObjectProperty .
+ev:object a owl:ObjectProperty .
