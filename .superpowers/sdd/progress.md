@@ -20,7 +20,7 @@
 | 1 | 1–3 | Clean toolchain; kernel, identity, immutable policy contracts pass | ✅ merged (PR #1) |
 | 2 | 4–6 | Event ledger, broker contract suite, read-only adapters pass | ✅ done |
 | 3 | 7–8 | Portfolio normalization, completeness, analysis gate pass | ✅ done |
-| 4 | 9–10 | Validated market snapshots, discovery coverage, tradability packets | ⬜ |
+| 4 | 9–10 | Validated market snapshots, discovery coverage, tradability packets | ✅ done |
 | 5 | 11 | Relational champion, ontology kernel, typed agent seam pass | ⬜ |
 | 6 | 12–13 | Deterministic sizing/risk + India/US compliance pass replay | ⬜ |
 | 7 | 14–15 | Durable execution, protection, kill states, broker write adapters | ⬜ |
@@ -39,8 +39,8 @@
 | 6 | Read-only Kite + Alpaca adapters | ✅ done | cc2eb73 | day-2 boundary |
 | 7 | Portfolio field authority + normalization | ✅ done | 3dcdd2e | day-3 boundary |
 | 8 | Portfolio snapshots, completeness, analysis gate | ✅ done | 80991df | day-3 boundary |
-| 9 | Validated multi-clock market-data snapshots | ⬜ not started | — | — |
-| 10 | Broad discovery, CoverageReceipts, tradability packets | ⬜ not started | — | — |
+| 9 | Validated multi-clock market-data snapshots | ✅ done | cef617d | day-4 boundary |
+| 10 | Broad discovery, CoverageReceipts, tradability packets | ✅ done | c1828ad | day-4 boundary |
 | 11 | Typed research evidence, relational champion, ontology kernel | ⬜ not started | — | — |
 | 12 | Deterministic sizing, risk, CAS reservations | ⬜ not started | — | — |
 | 13 | India + US compliance gates | ⬜ not started | — | — |
