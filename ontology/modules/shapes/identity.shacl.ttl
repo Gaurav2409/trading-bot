@@ -1,0 +1,29 @@
+@prefix id:  <https://trading-os.example/ontology/identity#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Any node that maps to an instrument must justify it with a governed
+# IdentityAssertion and a validity start. This is the false-merge guard: two
+# distinct securities cannot be equated without a reviewable assertion.
+id:MappingShape a sh:NodeShape ;
+    sh:targetSubjectsOf id:mapsToInstrument ;
+    sh:property [
+        sh:path id:mappingAssertion ;
+        sh:minCount 1 ;
+        sh:message "an instrument mapping must cite a governed IdentityAssertion" ;
+    ] ;
+    sh:property [
+        sh:path id:validFrom ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:message "an instrument mapping must have a validity start" ;
+    ] .
+
+id:IdentityAssertionShape a sh:NodeShape ;
+    sh:targetClass id:IdentityAssertion ;
+    sh:property [
+        sh:path id:assertionStatus ;
+        sh:minCount 1 ;
+        sh:in ( "candidate" "asserted" "confirmed" "disputed" "rejected" "superseded" ) ;
+        sh:message "assertionStatus must be one of the governed states" ;
+    ] .

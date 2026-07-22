@@ -1,0 +1,23 @@
+@prefix gov:  <https://trading-os.example/ontology/governance#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<https://trading-os.example/ontology/governance>
+    a owl:Ontology ;
+    rdfs:label "Governance and release module" ;
+    owl:versionIRI <https://trading-os.example/ontology/governance/release/v1> .
+
+# First-class immutable releases so every answer is reproducible from exact
+# versions (effective interval, supersession, approval evidence).
+gov:SemanticRelease a owl:Class ; rdfs:label "Semantic Release" .
+gov:ShapeRelease a owl:Class ; rdfs:label "Shape Release" .
+gov:MappingRelease a owl:Class ; rdfs:label "Mapping Release" .
+gov:QueryPackRelease a owl:Class ; rdfs:label "Query Pack Release" .
+gov:InferencePolicyRelease a owl:Class ; rdfs:label "Inference Policy Release" .
+gov:PolicyAssignment a owl:Class ; rdfs:label "Policy Assignment" .
+
+gov:effectiveFrom a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+gov:effectiveUntil a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
+gov:supersedes a owl:ObjectProperty ; rdfs:range gov:SemanticRelease .
+gov:approvalEvidence a owl:DatatypeProperty ; rdfs:range xsd:string .

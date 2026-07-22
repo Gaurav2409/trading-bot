@@ -14,17 +14,17 @@
 | H3 | P0 | Field rules: tz, cardinality, payload_hash, name alignment | ✅ done | 7f28ee3 |
 | H4 | P0 | Ontology/version metadata + release manifest | ✅ done | 7f28ee3 |
 | H5 | P0 | Negative safety tests | ✅ done | 7f28ee3 |
-| H0 | P1 | Module dependency manifest (owl:imports DAG) | ⬜ planned | — |
-| H6a | P1 | Identity canonicalization (IdentityAssertion, no owl:sameAs) | ⬜ planned | — |
-| H6b | P1 | Tradability / capability | ⬜ planned | — |
-| H7a | P1 | Time module (OWL-Time; decisionCutoffAt; receipt-vs-cutoff) | ⬜ planned | — |
-| H7b | P1 | Provenance module (PROV-O; correction/supersession lineage) | ⬜ planned | — |
-| H9 | P1 | Events/relationships (typed RelationshipAssertion) | ⬜ planned | — |
-| H8 | P1 | Evidence/reasoning (source-family, admission, contradiction target) | ⬜ planned | — |
-| H8b | P1 | Belief-state + DecisionFeatureSet projection (imports H9/H10) | ⬜ planned | — |
-| H11 | P1 | Portfolio-projection context (sh:closed allowlist) | ⬜ planned | — |
-| H10 | P1 | Technical/fundamental/sentiment markers | ⬜ planned | — |
-| H11b | P1 | Governance/release module | ⬜ planned | — |
+| H0 | P1 | Module dependency manifest (owl:imports DAG) | ✅ done | fd2894c |
+| H6a | P1 | Identity canonicalization (IdentityAssertion, no owl:sameAs) | ✅ done | 73db75a |
+| H6b | P1 | Tradability / capability | ✅ done | 73db75a |
+| H7a | P1 | Time module (OWL-Time; decisionCutoffAt; receipt-vs-cutoff) | ✅ done | 73db75a |
+| H7b | P1 | Provenance module (PROV-O; correction/supersession lineage) | ✅ done | 73db75a |
+| H9 | P1 | Events/relationships (typed RelationshipAssertion) | ✅ done | 73db75a |
+| H8 | P1 | Evidence/reasoning (source-family, admission, contradiction target) | ✅ done | 73db75a |
+| H8b | P1 | Belief-state + DecisionFeatureSet projection (imports H9/H10) | ✅ done | 73db75a |
+| H11 | P1 | Portfolio-projection context (sh:closed allowlist) | ✅ done | 73db75a |
+| H10 | P1 | Technical/fundamental/sentiment markers | ✅ done | 73db75a |
+| H11b | P1 | Governance/release module | ✅ done | 73db75a |
 | H12 | P2 | Competency-query pack (per-module goldens + cutoff cases) | ⬜ planned | — |
 | H13 | P2 | Projection parity + challenger evaluation (champion null hyp.) | ⬜ planned | — |
 | H14 | P2 | Governed promotion + demotion (DecisionFeatureDeactivation) | ⬜ planned | — |
@@ -32,6 +32,11 @@
 ## Verification (P0)
 
 `make verify` green: ruff ✓, mypy --strict ✓ (79 files), pytest ✓ (131 passed).
+
+## Verification (P1)
+
+`make verify` green: ruff ✓, mypy --strict ✓ (80 files), pytest ✓ (146 passed).
+11 modules; import closure OK across the real DAG.
 
 ## Log
 

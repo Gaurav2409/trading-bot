@@ -1,0 +1,23 @@
+@prefix tm:   <https://trading-os.example/ontology/time#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Cutoff safety: a timed fact may not be received after its snapshot's decision
+# cutoff. This is the canonical look-ahead guard. Gate on receipt-vs-cutoff ONLY
+# (not occurred/published), because guidance is future-effective and data can be
+# backfilled or embargoed.
+tm:CutoffShape a sh:NodeShape ;
+    sh:targetClass tm:TimedFact ;
+    sh:sparql [
+        sh:message "a fact's receivedAt must not be after its snapshot decisionCutoffAt" ;
+        sh:prefixes tm: ;
+        sh:select """
+            PREFIX tm: <https://trading-os.example/ontology/time#>
+            SELECT $this WHERE {
+                $this tm:inSnapshot ?snap ;
+                      tm:receivedAt ?recv .
+                ?snap tm:decisionCutoffAt ?cutoff .
+                FILTER (?recv > ?cutoff)
+            }
+        """ ;
+    ] .

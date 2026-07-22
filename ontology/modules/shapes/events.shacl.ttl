@@ -1,0 +1,11 @@
+@prefix ev:  <https://trading-os.example/ontology/events#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+
+ev:RelationshipAssertionShape a sh:NodeShape ;
+    sh:targetClass ev:RelationshipAssertion ;
+    sh:property [
+        sh:path ev:relationshipType ;
+        sh:minCount 1 ;
+        sh:in ( "OBSERVED" "CONTRACTUAL" "CAUSAL_HYPOTHESIS" "INFERRED" ) ;
+        sh:message "a RelationshipAssertion must declare a governed relationshipType" ;
+    ] .
