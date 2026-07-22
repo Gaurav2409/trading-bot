@@ -46,8 +46,8 @@
 | 13 | India + US compliance gates | ✅ done | 832388a | day-6 boundary |
 | 14 | Durable execution, kill states, protection | ✅ done | cd0735d | day-7 boundary |
 | 15 | Capability-gated Kite + Alpaca writes | ✅ done | 0eba3c4 | day-7 boundary |
-| 16 | Reconciliation + retrospective loop | ⬜ not started | — | — |
-| 17 | Scheduler, API, operator console | ⬜ not started | — | — |
+| 16 | Reconciliation + retrospective loop | ✅ done | ebca19a | day-8 boundary |
+| 17 | Scheduler, API, operator console | ✅ done | 7470542 | day-8 boundary |
 | 18 | Two-broker replay, readiness, scoped T0 authority | ⬜ not started | — | — |
 
 ## Non-negotiable invariants (guardrails for every task)
