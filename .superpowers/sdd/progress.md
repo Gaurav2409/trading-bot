@@ -1,0 +1,73 @@
+# Nine-Day Two-Broker Live V1 — SDD Progress Ledger
+
+**Branch:** `codex/live-v1`
+**Worktree:** `.worktrees/codex-live-v1` (branched from `50f2ba2`)
+**Controlling plan:** `docs/superpowers/plans/2026-07-22-nine-day-live-v1-implementation.md`
+**Controlling spec:** `docs/superpowers/specs/2026-07-22-live-v1-architecture-amendment.md`
+**ADRs:** 0001 evidence-gated two-broker live; 0002 custody vs OS intention; 0003 product vs semantic activation
+
+> The `2026-07-21` plans (paper-first, EOD-only, ontology-sequenced) are SUPERSEDED.
+> The raw MoA drafts returned NO-GO and are not specifications.
+
+## Alembic chain (single head required)
+
+`0001_event_ledger` → (later migrations appended per task, never reset)
+
+## Nine-day delivery map
+
+| Day | Tasks | Exit evidence | Status |
+|---|---|---|---|
+| 1 | 1–3 | Clean toolchain; kernel, identity, immutable policy contracts pass | ⬜ |
+| 2 | 4–6 | Event ledger, broker contract suite, read-only adapters pass | ⬜ |
+| 3 | 7–8 | Portfolio normalization, completeness, analysis gate pass | ⬜ |
+| 4 | 9–10 | Validated market snapshots, discovery coverage, tradability packets | ⬜ |
+| 5 | 11 | Relational champion, ontology kernel, typed agent seam pass | ⬜ |
+| 6 | 12–13 | Deterministic sizing/risk + India/US compliance pass replay | ⬜ |
+| 7 | 14–15 | Durable execution, protection, kill states, broker write adapters | ⬜ |
+| 8 | 16–17 | Reconciliation, retrospective, API, operator console e2e | ⬜ |
+| 9 | 18 | Both broker T0 readiness receipts + reversible activation runbook | ⬜ |
+
+## Task progress
+
+| Task | Title | Status | Commit | Review |
+|------|-------|--------|--------|--------|
+| 1 | Repository baseline + one-command verification | ⬜ not started | — | — |
+| 2 | Typed kernel + immutable event envelope | ⬜ not started | — | — |
+| 3 | Legal parties, account authority, policy releases | ⬜ not started | — | — |
+| 4 | Append-only Postgres event store + replay | ⬜ not started | — | — |
+| 5 | Normalized broker observation/execution ports | ⬜ not started | — | — |
+| 6 | Read-only Kite + Alpaca adapters | ⬜ not started | — | — |
+| 7 | Portfolio field authority + normalization | ⬜ not started | — | — |
+| 8 | Portfolio snapshots, completeness, analysis gate | ⬜ not started | — | — |
+| 9 | Validated multi-clock market-data snapshots | ⬜ not started | — | — |
+| 10 | Broad discovery, CoverageReceipts, tradability packets | ⬜ not started | — | — |
+| 11 | Typed research evidence, relational champion, ontology kernel | ⬜ not started | — | — |
+| 12 | Deterministic sizing, risk, CAS reservations | ⬜ not started | — | — |
+| 13 | India + US compliance gates | ⬜ not started | — | — |
+| 14 | Durable execution, kill states, protection | ⬜ not started | — | — |
+| 15 | Capability-gated Kite + Alpaca writes | ⬜ not started | — | — |
+| 16 | Reconciliation + retrospective loop | ⬜ not started | — | — |
+| 17 | Scheduler, API, operator console | ⬜ not started | — | — |
+| 18 | Two-broker replay, readiness, scoped T0 authority | ⬜ not started | — | — |
+
+## Non-negotiable invariants (guardrails for every task)
+
+- Research emits no quantity/price/target weight/order/executable command.
+- Every exposure-increasing decision binds fresh, partitioned, current portfolio state.
+- Broker custody observations and OS intention/history stay distinct; reconciliation never silently picks a winner.
+- Each order belongs to one account, capital envelope, policy set, kill generation.
+- Household views never pool custody/cash/buying power/collateral/loss/orders.
+- Policy changes create immutable releases; never reset loss/drawdown/history.
+- Relational retrieval is the permanent champion; RDF/Neo4j are rebuildable projections.
+- Semantic activation and product/account execution capability are independent AND-gates.
+- Operational safety faults fence new exposure regardless of remaining loss budget.
+- India: never assume algo market orders are permitted; limit/protected order types only.
+- No live write without a broker-scoped, current `LiveAuthorityReceipt`.
+- Family + non-equity execution deny-by-default in V1.
+
+## Log
+
+- 2026-07-22: New controlling plan (nine-day live V1) supersedes 2026-07-21 plans. Stale
+  `codex/trading-world-ontology` worktree/branch removed (was empty, clean, no unique commits).
+  Fresh worktree `.worktrees/codex-live-v1` created from `50f2ba2` on branch `codex/live-v1`.
+  All 9 controlling documents read in full. Ledger reset to the 18-task nine-day plan.
