@@ -25,9 +25,9 @@
 | H11 | P1 | Portfolio-projection context (sh:closed allowlist) | ✅ done | 73db75a |
 | H10 | P1 | Technical/fundamental/sentiment markers | ✅ done | 73db75a |
 | H11b | P1 | Governance/release module | ✅ done | 73db75a |
-| H12 | P2 | Competency-query pack (per-module goldens + cutoff cases) | ⬜ planned | — |
-| H13 | P2 | Projection parity + challenger evaluation (champion null hyp.) | ⬜ planned | — |
-| H14 | P2 | Governed promotion + demotion (DecisionFeatureDeactivation) | ⬜ planned | — |
+| H12 | P2 | Competency-query pack (per-module goldens + cutoff cases) | ✅ done | 38e216b |
+| H13 | P2 | Projection parity + challenger evaluation (champion null hyp.) | ✅ done | 38e216b |
+| H14 | P2 | Governed promotion + demotion (DecisionFeatureDeactivation) | ✅ done | 38e216b |
 
 ## Verification (P0)
 
