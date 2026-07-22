@@ -1,0 +1,32 @@
+import os
+from collections.abc import AsyncIterator
+
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from trading_os.ledger.store import EventStore
+from trading_os.ledger.tables import Base
+
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://trading:trading@localhost:5432/trading",
+)
+
+
+@pytest_asyncio.fixture(scope="module")
+async def engine() -> AsyncIterator[object]:
+    engine = create_async_engine(TEST_DATABASE_URL, future=True)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def event_store(engine: object) -> AsyncIterator[EventStore]:
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)  # type: ignore[arg-type]
+    async with session_factory() as session:
+        yield EventStore(session)
