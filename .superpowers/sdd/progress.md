@@ -31,8 +31,8 @@
 
 | Task | Title | Status | Commit | Review |
 |------|-------|--------|--------|--------|
-| 1 | Repository baseline + one-command verification | ⬜ not started | — | — |
-| 2 | Typed kernel + immutable event envelope | ⬜ not started | — | — |
+| 1 | Repository baseline + one-command verification | ✅ done | d96ba9b | day-1 boundary |
+| 2 | Typed kernel + immutable event envelope | ✅ done | 66cede5 | day-1 boundary |
 | 3 | Legal parties, account authority, policy releases | ⬜ not started | — | — |
 | 4 | Append-only Postgres event store + replay | ⬜ not started | — | — |
 | 5 | Normalized broker observation/execution ports | ⬜ not started | — | — |
