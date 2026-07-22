@@ -12,6 +12,7 @@ import httpx
 import pytest
 
 from tests.contract.agents.llm_role_contract import (
+    FABRICATED_FIELD_KEY,
     MALFORMED_KEY,
     REFUSAL_KEY,
     TIMEOUT_KEY,
@@ -69,6 +70,12 @@ class _FakeMessages:
             return _Message(
                 [_ToolUseBlock({"event_type": "x"})], stop_reason="tool_use"
             )
+        if replay_key == FABRICATED_FIELD_KEY:
+            # Provider payload smuggles an extra fabricated numeric field. With
+            # extra="forbid" on the output schema this is malformed_output, not
+            # a silent drop.
+            payload = {**VALID_OUTPUT.model_dump(), "fabricated_target_price": 123.45}
+            return _Message([_ToolUseBlock(payload)], stop_reason="tool_use")
         if replay_key == REFUSAL_KEY:
             return _Message([_TextBlock("I can't help.")], stop_reason="refusal")
         if replay_key == TIMEOUT_KEY:
@@ -109,6 +116,14 @@ async def test_anthropic_unsupported_capability_fails_closed() -> None:
         invocation_for(UNSUPPORTED_KEY, allowed_capability_names=("code_execution",))
     )
     assert result == ExpectedLLMFailure(kind="unsupported", retryable=False)
+
+
+async def test_anthropic_fabricated_field_is_malformed_not_dropped() -> None:
+    # Regression (workflow critic C1-soft): a fabricated extra field in the
+    # provider payload must be flagged malformed_output, not silently dropped.
+    role = AnthropicLLMRole(client=_FakeAnthropicClient(), model=MODEL)
+    result = await role.invoke(invocation_for(FABRICATED_FIELD_KEY))
+    assert result == ExpectedLLMFailure(kind="malformed_output", retryable=False)
 
 
 def test_anthropic_role_needs_no_credentials() -> None:

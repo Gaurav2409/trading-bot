@@ -12,6 +12,8 @@ from tests.contract.agents.trajectory_engine_contract import (
     TrajectoryEngineContract,
     _CrashOnce,
     build_registry,
+    bypass_admission_release,
+    capability_on_deterministic_node_release,
     corporate_event_release,
     seam_without_admission_release,
     unsafe_release,
@@ -65,6 +67,29 @@ def test_compiler_rejects_seam_without_following_admission() -> None:
         match="terminal path must cross categorical seam and admission",
     ):
         compiler.compile(seam_without_admission_release())
+
+
+def test_compiler_rejects_admission_with_a_bypass_edge_skipping_the_seam() -> None:
+    # Regression (workflow critic): the terminal-path validator accepted an
+    # admission node when ANY predecessor was the seam, so a bypass edge
+    # (gather->admission) that skips the seam passed compiler validation.
+    compiler = _compiler(InMemoryAgentRunLedger())
+    with pytest.raises(
+        TrajectoryCompileError,
+        match="every path into admission must cross the categorical seam",
+    ):
+        compiler.compile(bypass_admission_release())
+
+
+def test_compiler_rejects_capability_on_a_non_agentic_node() -> None:
+    # Deny-by-default (spec §12): a deterministic/seam/admission node may not
+    # declare a tool capability. Restores the plan-specified _validate_capabilities.
+    compiler = _compiler(InMemoryAgentRunLedger())
+    with pytest.raises(
+        TrajectoryCompileError,
+        match="only agentic nodes may declare capabilities",
+    ):
+        compiler.compile(capability_on_deterministic_node_release())
 
 
 def test_compiler_rejects_release_with_unregistered_node() -> None:

@@ -104,6 +104,77 @@ def seam_without_admission_release() -> TrajectoryRelease:
     return _linear_release(nodes, release_id="trajectory:seam-only:v1")
 
 
+def bypass_admission_release() -> TrajectoryRelease:
+    """Admission has a seam predecessor AND a bypass edge straight from gather.
+
+    A validator that accepts admission when *any* predecessor is the seam would
+    wrongly admit this: the gather->admission edge skips the categorical seam.
+    Every predecessor of an admission node must be the seam.
+    """
+
+    node_releases = (
+        TrajectoryNodeRelease(node_id="gather", kind=NodeKind.AGENT_LOOP),
+        TrajectoryNodeRelease(
+            node_id="categorical_seam", kind=NodeKind.CATEGORICAL_SEAM
+        ),
+        TrajectoryNodeRelease(node_id="admission", kind=NodeKind.ADMISSION),
+    )
+    edges = (
+        TrajectoryEdge(source="gather", target="categorical_seam"),
+        TrajectoryEdge(source="categorical_seam", target="admission"),
+        TrajectoryEdge(source="gather", target="admission"),  # bypass
+    )
+    return TrajectoryRelease(
+        release_id="trajectory:bypass:v1",
+        status=ReleaseStatus.SHADOW,
+        effective_from=CUTOFF,
+        input_schema_id="schema:research-question:v1",
+        output_schema_id="schema:evidence-packet:v1",
+        nodes=node_releases,
+        edges=edges,
+        terminal_node_ids=("admission",),
+        content_hash="sha256:bypass",
+    )
+
+
+def capability_on_deterministic_node_release() -> TrajectoryRelease:
+    """A deterministic transform that illegally declares a tool capability.
+
+    Deny-by-default (spec §12, constraint 6): only agentic node kinds may
+    reference a capability release. A deterministic/seam/admission node holding a
+    capability is a compile-time containment violation.
+    """
+
+    node_releases = (
+        TrajectoryNodeRelease(node_id="gather", kind=NodeKind.AGENT_LOOP),
+        TrajectoryNodeRelease(
+            node_id="normalize",
+            kind=NodeKind.DETERMINISTIC_TRANSFORM,
+            capability_release_ids=("capability:source-record-query:v1",),
+        ),
+        TrajectoryNodeRelease(
+            node_id="categorical_seam", kind=NodeKind.CATEGORICAL_SEAM
+        ),
+        TrajectoryNodeRelease(node_id="admission", kind=NodeKind.ADMISSION),
+    )
+    edges = (
+        TrajectoryEdge(source="gather", target="normalize"),
+        TrajectoryEdge(source="normalize", target="categorical_seam"),
+        TrajectoryEdge(source="categorical_seam", target="admission"),
+    )
+    return TrajectoryRelease(
+        release_id="trajectory:cap-on-deterministic:v1",
+        status=ReleaseStatus.SHADOW,
+        effective_from=CUTOFF,
+        input_schema_id="schema:research-question:v1",
+        output_schema_id="schema:evidence-packet:v1",
+        nodes=node_releases,
+        edges=edges,
+        terminal_node_ids=("admission",),
+        content_hash="sha256:cap-on-deterministic",
+    )
+
+
 def _packet_for(invocation: TrajectoryInvocation) -> EvidencePacket:
     return EvidencePacket(
         packet_id=f"packet:{invocation.question_id}",

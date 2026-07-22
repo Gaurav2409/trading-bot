@@ -22,7 +22,7 @@ from trading_os.agents.llm import (
 )
 
 
-class EventExtraction(BaseModel, frozen=True):
+class EventExtraction(BaseModel, frozen=True, extra="forbid"):
     event_type: str
     record_ids: tuple[str, ...]
     issuer_id: str
@@ -30,6 +30,7 @@ class EventExtraction(BaseModel, frozen=True):
 
 VALID_KEY = "replay:valid"
 MALFORMED_KEY = "replay:malformed"
+FABRICATED_FIELD_KEY = "replay:fabricated"
 REFUSAL_KEY = "replay:refusal"
 TIMEOUT_KEY = "replay:timeout"
 UNSUPPORTED_KEY = "replay:unsupported"

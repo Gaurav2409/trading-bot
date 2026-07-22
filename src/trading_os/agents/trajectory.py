@@ -32,6 +32,13 @@ class TrajectoryCompileError(RuntimeError):
     """Raised when a release cannot be compiled to a safe executable graph."""
 
 
+# Only these node kinds invoke a model or a tool and may therefore reference a
+# capability release (spec §12). Every other kind is pure project code.
+_AGENTIC_NODE_KINDS: frozenset[NodeKind] = frozenset(
+    {NodeKind.AGENT_LOOP, NodeKind.JUDGE, NodeKind.FAN_OUT}
+)
+
+
 class TrajectoryInvocation(BaseModel, frozen=True):
     run_id: str
     question_id: str
@@ -160,6 +167,7 @@ class TrajectoryCompiler:
 
     def compile(self, release: TrajectoryRelease) -> CompiledTrajectory:
         self._validate_node_handlers(release)
+        self._validate_capabilities(release)
         self._validate_terminal_paths(release)
         return self._engine.compile(release, self._node_registry)
 
@@ -168,6 +176,22 @@ class TrajectoryCompiler:
             if not self._node_registry.has(node.node_id):
                 raise TrajectoryCompileError(
                     f"no registered handler for node {node.node_id!r}"
+                )
+
+    def _validate_capabilities(self, release: TrajectoryRelease) -> None:
+        """Deny-by-default (spec §12, constraint 6): only agentic node kinds may
+        reference a tool capability. A deterministic transform, validation,
+        branch, join, budget gate, categorical seam, admission, or explicit-
+        missing node holding a capability is a compile-time containment
+        violation — those nodes are pure project code and call no tools.
+        """
+
+        for node in release.nodes:
+            if node.capability_release_ids and node.kind not in _AGENTIC_NODE_KINDS:
+                raise TrajectoryCompileError(
+                    f"only agentic nodes may declare capabilities; "
+                    f"node {node.node_id!r} ({node.kind}) declares "
+                    f"{node.capability_release_ids!r}"
                 )
 
     def _validate_terminal_paths(self, release: TrajectoryRelease) -> None:
@@ -183,11 +207,18 @@ class TrajectoryCompiler:
                 raise TrajectoryCompileError(
                     "terminal path must cross categorical seam and admission"
                 )
-            seam_precedes_admission = any(
-                kinds.get(pred) is NodeKind.CATEGORICAL_SEAM
-                for pred in predecessors[terminal_id]
-            )
-            if not seam_precedes_admission:
+            admission_predecessors = predecessors[terminal_id]
+            if not admission_predecessors:
                 raise TrajectoryCompileError(
                     "terminal path must cross categorical seam and admission"
+                )
+            # EVERY path into admission must cross the categorical seam — not
+            # just one. A bypass edge that reaches admission without the seam is
+            # a hole through which an unvalidated packet could be admitted.
+            if any(
+                kinds.get(pred) is not NodeKind.CATEGORICAL_SEAM
+                for pred in admission_predecessors
+            ):
+                raise TrajectoryCompileError(
+                    "every path into admission must cross the categorical seam"
                 )

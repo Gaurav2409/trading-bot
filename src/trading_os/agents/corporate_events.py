@@ -46,7 +46,7 @@ _FAILURE_ASSESSMENTS: dict[str, str] = {
 }
 
 
-class EventExtraction(BaseModel, frozen=True):
+class EventExtraction(BaseModel, frozen=True, extra="forbid"):
     """Categorical output of the ``gather`` agent loop."""
 
     event_type: str
@@ -55,7 +55,7 @@ class EventExtraction(BaseModel, frozen=True):
     stated_effective_at: datetime | None = None
 
 
-class NormalizedCorporateEvent(BaseModel, frozen=True):
+class NormalizedCorporateEvent(BaseModel, frozen=True, extra="forbid"):
     """Deterministic normalization output between the two agent loops."""
 
     event_type: str
@@ -65,7 +65,7 @@ class NormalizedCorporateEvent(BaseModel, frozen=True):
     within_cutoff: bool
 
 
-class EventJudgement(BaseModel, frozen=True):
+class EventJudgement(BaseModel, frozen=True, extra="forbid"):
     """Categorical assessment produced by the ``judge`` agent loop."""
 
     assessment: str
@@ -74,7 +74,7 @@ class EventJudgement(BaseModel, frozen=True):
     missing: tuple[str, ...]
 
 
-class CorporateEventDraft(BaseModel, frozen=True):
+class CorporateEventDraft(BaseModel, frozen=True, extra="forbid"):
     """Reconciled categorical draft ready for the categorical seam and admission."""
 
     assessment: str
