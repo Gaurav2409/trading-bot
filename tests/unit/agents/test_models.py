@@ -57,6 +57,7 @@ def test_trajectory_rejects_cycle_without_monotonic_budget_gate() -> None:
 
 
 def test_trajectory_allows_cycle_with_budget_gate() -> None:
+    # The budget gate must sit ON the cycle and carry a RunBudget.
     trajectory = TrajectoryRelease(
         release_id="trajectory:good:v1",
         status="shadow",
@@ -65,17 +66,103 @@ def test_trajectory_allows_cycle_with_budget_gate() -> None:
         output_schema_id="schema:evidence-packet:v1",
         nodes=(
             TrajectoryNodeRelease(node_id="gather", kind=NodeKind.AGENT_LOOP),
-            TrajectoryNodeRelease(node_id="gate", kind=NodeKind.BUDGET_GATE),
+            TrajectoryNodeRelease(
+                node_id="gate",
+                kind=NodeKind.BUDGET_GATE,
+                budget=RunBudget(max_turns=2, max_tokens=1_000, max_tool_calls=2),
+            ),
             TrajectoryNodeRelease(node_id="judge", kind=NodeKind.AGENT_LOOP),
         ),
         edges=(
-            TrajectoryEdge(source="gather", target="judge"),
+            TrajectoryEdge(source="gather", target="gate"),
+            TrajectoryEdge(source="gate", target="judge"),
             TrajectoryEdge(source="judge", target="gather"),
         ),
         terminal_node_ids=("judge",),
         content_hash="sha256:good",
     )
     assert trajectory.release_id == "trajectory:good:v1"
+
+
+def test_trajectory_rejects_three_node_cycle_without_gate() -> None:
+    # Regression (workflow critic): a >=3-node cycle a->b->c->a was NOT detected
+    # by pairwise-reciprocal cycle detection and was admitted with no gate.
+    with pytest.raises(ValidationError, match="cycle requires a budget gate"):
+        TrajectoryRelease(
+            release_id="trajectory:three-cycle:v1",
+            status="shadow",
+            effective_from=datetime(2026, 7, 23, tzinfo=UTC),
+            input_schema_id="schema:research-question:v1",
+            output_schema_id="schema:evidence-packet:v1",
+            nodes=(
+                TrajectoryNodeRelease(node_id="a", kind=NodeKind.AGENT_LOOP),
+                TrajectoryNodeRelease(node_id="b", kind=NodeKind.AGENT_LOOP),
+                TrajectoryNodeRelease(node_id="c", kind=NodeKind.AGENT_LOOP),
+            ),
+            edges=(
+                TrajectoryEdge(source="a", target="b"),
+                TrajectoryEdge(source="b", target="c"),
+                TrajectoryEdge(source="c", target="a"),
+            ),
+            terminal_node_ids=("c",),
+            content_hash="sha256:three-cycle",
+        )
+
+
+def test_trajectory_rejects_gate_off_the_cycle() -> None:
+    # Regression (workflow critic): a BUDGET_GATE disconnected from the cycle
+    # (edges only connect the cycle nodes) does not bound the loop.
+    with pytest.raises(ValidationError, match="budget gate.*on the cycle"):
+        TrajectoryRelease(
+            release_id="trajectory:gate-off-cycle:v1",
+            status="shadow",
+            effective_from=datetime(2026, 7, 23, tzinfo=UTC),
+            input_schema_id="schema:research-question:v1",
+            output_schema_id="schema:evidence-packet:v1",
+            nodes=(
+                TrajectoryNodeRelease(node_id="gather", kind=NodeKind.AGENT_LOOP),
+                TrajectoryNodeRelease(node_id="judge", kind=NodeKind.AGENT_LOOP),
+                TrajectoryNodeRelease(
+                    node_id="dead_gate",
+                    kind=NodeKind.BUDGET_GATE,
+                    budget=RunBudget(
+                        max_turns=2, max_tokens=1_000, max_tool_calls=2
+                    ),
+                ),
+            ),
+            edges=(
+                TrajectoryEdge(source="gather", target="judge"),
+                TrajectoryEdge(source="judge", target="gather"),
+            ),
+            terminal_node_ids=("judge",),
+            content_hash="sha256:gate-off-cycle",
+        )
+
+
+def test_trajectory_rejects_gate_on_cycle_without_budget() -> None:
+    # A gate on the cycle that carries no RunBudget does not bound anything.
+    with pytest.raises(ValidationError, match="budget gate.*RunBudget"):
+        TrajectoryRelease(
+            release_id="trajectory:gate-no-budget:v1",
+            status="shadow",
+            effective_from=datetime(2026, 7, 23, tzinfo=UTC),
+            input_schema_id="schema:research-question:v1",
+            output_schema_id="schema:evidence-packet:v1",
+            nodes=(
+                TrajectoryNodeRelease(node_id="gather", kind=NodeKind.AGENT_LOOP),
+                TrajectoryNodeRelease(
+                    node_id="gate", kind=NodeKind.BUDGET_GATE
+                ),
+                TrajectoryNodeRelease(node_id="judge", kind=NodeKind.AGENT_LOOP),
+            ),
+            edges=(
+                TrajectoryEdge(source="gather", target="gate"),
+                TrajectoryEdge(source="gate", target="judge"),
+                TrajectoryEdge(source="judge", target="gather"),
+            ),
+            terminal_node_ids=("judge",),
+            content_hash="sha256:gate-no-budget",
+        )
 
 
 def test_trajectory_rejects_unknown_terminal_node() -> None:

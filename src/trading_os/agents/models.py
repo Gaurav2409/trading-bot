@@ -98,20 +98,80 @@ class TrajectoryRelease(BaseModel, frozen=True):
             for edge in self.edges
         ):
             raise ValueError("edge references an unknown node")
-        cyclic_nodes = {
-            edge.source
-            for edge in self.edges
-            if any(
-                back.target == edge.source
-                for back in self.edges
-                if back.source == edge.target
-            )
+        # Bounded-cycle safety (spec §8, constraint 5). A trajectory may contain
+        # cycles only if EVERY cycle is bounded by a budget gate that sits ON the
+        # cycle and carries a RunBudget. Cycle detection must catch cycles of any
+        # length (a->b->c->a), not just 2-node reciprocal pairs.
+        gate_ids = {
+            node.node_id
+            for node in self.nodes
+            if node.kind is NodeKind.BUDGET_GATE
         }
-        if cyclic_nodes and not any(
-            node.kind is NodeKind.BUDGET_GATE for node in self.nodes
-        ):
-            raise ValueError("cycle requires a budget gate")
+        budgeted_gate_ids = {
+            node.node_id
+            for node in self.nodes
+            if node.kind is NodeKind.BUDGET_GATE and node.budget is not None
+        }
+        for cycle in self._cycles():
+            on_cycle_gates = cycle & gate_ids
+            if not on_cycle_gates:
+                # Matches both "cycle requires a budget gate" (no gate at all)
+                # and "budget gate ... on the cycle" (gate exists but off-cycle).
+                raise ValueError(
+                    "cycle requires a budget gate on the cycle path"
+                )
+            if not (on_cycle_gates & budgeted_gate_ids):
+                raise ValueError(
+                    "budget gate on the cycle must carry a RunBudget"
+                )
         return self
+
+    def _cycles(self) -> list[set[str]]:
+        """Return the node sets of each strongly connected component that is a
+        cycle (an SCC of size > 1, or a self-loop). Tarjan's algorithm.
+        """
+
+        adjacency: dict[str, list[str]] = {
+            node.node_id: [] for node in self.nodes
+        }
+        for edge in self.edges:
+            adjacency[edge.source].append(edge.target)
+
+        index_counter = [0]
+        stack: list[str] = []
+        on_stack: set[str] = set()
+        indices: dict[str, int] = {}
+        low: dict[str, int] = {}
+        components: list[set[str]] = []
+        self_loops = {edge.source for edge in self.edges if edge.source == edge.target}
+
+        def strongconnect(node: str) -> None:
+            indices[node] = index_counter[0]
+            low[node] = index_counter[0]
+            index_counter[0] += 1
+            stack.append(node)
+            on_stack.add(node)
+            for successor in adjacency[node]:
+                if successor not in indices:
+                    strongconnect(successor)
+                    low[node] = min(low[node], low[successor])
+                elif successor in on_stack:
+                    low[node] = min(low[node], indices[successor])
+            if low[node] == indices[node]:
+                component: set[str] = set()
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    component.add(member)
+                    if member == node:
+                        break
+                if len(component) > 1 or component & self_loops:
+                    components.append(component)
+
+        for node_id in adjacency:
+            if node_id not in indices:
+                strongconnect(node_id)
+        return components
 
 
 class AgentProfileRelease(BaseModel, frozen=True):
