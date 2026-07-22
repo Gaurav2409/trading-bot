@@ -4,29 +4,47 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
-tw:TradingWorld a owl:Ontology ;
-    rdfs:label "Trading World core vocabulary" .
+# Ontology + version metadata (ADR-0004: release identity is a manifest hash, but
+# this document must still declare its own IRI and versionIRI).
+<https://trading-os.example/ontology/trading-world>
+    a owl:Ontology ;
+    rdfs:label "Trading World core vocabulary" ;
+    owl:versionIRI <https://trading-os.example/ontology/trading-world/release/v1> .
 
-# Identity and tradability
+# Identity and tradability. ADR-0005: LegalEntity is stable; IssuerRole is a
+# time-scoped role binding an entity to a security, not an essential subclass.
 tw:LegalParty a owl:Class ; rdfs:label "Legal Party" .
-tw:Issuer a owl:Class ; rdfs:subClassOf tw:LegalParty ; rdfs:label "Issuer" .
+tw:LegalEntity a owl:Class ; rdfs:subClassOf tw:LegalParty ; rdfs:label "Legal Entity" .
+tw:IssuerRole a owl:Class ; rdfs:label "Issuer Role" .
 tw:Security a owl:Class ; rdfs:label "Security" .
 tw:Listing a owl:Class ; rdfs:label "Listing" .
 tw:BrokerageAccount a owl:Class ; rdfs:label "Brokerage Account" .
 
-# Evidence and world state
+# Evidence and world state.
 tw:SourceRecord a owl:Class ; rdfs:label "Source Record" .
 tw:Observation a owl:Class ; rdfs:label "Observation" .
 tw:Claim a owl:Class ; rdfs:label "Claim" .
+tw:AdmittedAssertion a owl:Class ; rdfs:label "Admitted Assertion" .
 tw:WorldEvent a owl:Class ; rdfs:label "World Event" .
 tw:EvidencePacket a owl:Class ; rdfs:label "Evidence Packet" .
 tw:PortfolioSnapshot a owl:Class ; rdfs:label "Portfolio Snapshot" .
 
-# Provenance and time properties
-tw:issuedBy a owl:ObjectProperty ; rdfs:domain tw:Security ; rdfs:range tw:Issuer .
+# Identity / role properties (role indirection per ADR-0005).
+tw:playedBy a owl:ObjectProperty ; rdfs:domain tw:IssuerRole ; rdfs:range tw:LegalEntity .
+tw:issuesSecurity a owl:ObjectProperty ; rdfs:domain tw:IssuerRole ; rdfs:range tw:Security .
 tw:listedAs a owl:ObjectProperty ; rdfs:domain tw:Security ; rdfs:range tw:Listing .
+tw:roleValidFrom a owl:DatatypeProperty ; rdfs:domain tw:IssuerRole ; rdfs:range xsd:dateTime .
+tw:roleValidUntil a owl:DatatypeProperty ; rdfs:domain tw:IssuerRole ; rdfs:range xsd:dateTime .
+
+# Evidence properties. An EvidencePacket CONTAINS claims / IS DERIVED FROM
+# evidence; it is not itself a Claim. Claim supportedBy SourceRecord stays separate.
 tw:supportedBy a owl:ObjectProperty ; rdfs:domain tw:Claim ; rdfs:range tw:SourceRecord .
+tw:containsClaim a owl:ObjectProperty ; rdfs:domain tw:EvidencePacket ; rdfs:range tw:Claim .
+tw:isDerivedFrom a owl:ObjectProperty ; rdfs:domain tw:EvidencePacket ; rdfs:range tw:SourceRecord .
+tw:admits a owl:ObjectProperty ; rdfs:domain tw:AdmittedAssertion ; rdfs:range tw:Claim .
+
+# Time + provenance datatype properties (bitemporal; never collapsed).
 tw:publishedAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
 tw:effectiveAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
 tw:receivedAt a owl:DatatypeProperty ; rdfs:range xsd:dateTime .
-tw:sourceRecordHash a owl:DatatypeProperty ; rdfs:range xsd:string .
+tw:payload_hash a owl:DatatypeProperty ; rdfs:domain tw:SourceRecord ; rdfs:range xsd:string .

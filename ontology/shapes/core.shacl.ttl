@@ -2,6 +2,9 @@
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
+# Timezone-qualified dateTime: must end in Z or an explicit +HH:MM / -HH:MM offset.
+# sh:datatype xsd:dateTime alone accepts naive datetimes, which are unsafe for
+# point-in-time trading, so a pattern enforces the offset.
 tw:SourceRecordShape a sh:NodeShape ;
     sh:targetClass tw:SourceRecord ;
     sh:property [
@@ -9,30 +12,49 @@ tw:SourceRecordShape a sh:NodeShape ;
         sh:datatype xsd:dateTime ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
+        sh:pattern "(Z|[+-][0-9]{2}:[0-9]{2})$" ;
+        sh:message "publishedAt must be timezone-qualified" ;
     ] ;
     sh:property [
         sh:path tw:receivedAt ;
         sh:datatype xsd:dateTime ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
+        sh:pattern "(Z|[+-][0-9]{2}:[0-9]{2})$" ;
+        sh:message "receivedAt must be timezone-qualified" ;
     ] ;
     sh:property [
-        sh:path tw:sourceRecordHash ;
+        sh:path tw:payload_hash ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^sha256:[0-9a-f]+$|^sha256:.+$" ;
+        sh:message "payload_hash must name its algorithm (e.g. sha256:...)" ;
     ] .
 
+# A Security must have a venue listing. The issuer relationship is expressed via
+# a time-scoped IssuerRole (ADR-0005), validated on the role, not the security.
 tw:SecurityShape a sh:NodeShape ;
     sh:targetClass tw:Security ;
     sh:property [
-        sh:path tw:issuedBy ;
-        sh:class tw:Issuer ;
+        sh:path tw:listedAs ;
         sh:minCount 1 ;
+        sh:message "a Security must have at least one Listing" ;
     ] .
 
+# An IssuerRole must bind an entity and a security and carry a validity start.
+tw:IssuerRoleShape a sh:NodeShape ;
+    sh:targetClass tw:IssuerRole ;
+    sh:property [ sh:path tw:playedBy ; sh:class tw:LegalEntity ; sh:minCount 1 ] ;
+    sh:property [ sh:path tw:issuesSecurity ; sh:class tw:Security ; sh:minCount 1 ] ;
+    sh:property [ sh:path tw:roleValidFrom ; sh:datatype xsd:dateTime ; sh:minCount 1 ] .
+
+# EvidencePacket links are explicit and real (no no-op minCount 0). A packet must
+# reference at least one contained claim or be derived from a source record.
 tw:EvidencePacketShape a sh:NodeShape ;
     sh:targetClass tw:EvidencePacket ;
-    sh:property [
-        sh:path tw:supportedBy ;
-        sh:minCount 0 ;
-    ] .
+    sh:or (
+        [ sh:property [ sh:path tw:containsClaim ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path tw:isDerivedFrom ; sh:minCount 1 ] ]
+    ) ;
+    sh:message "an EvidencePacket must contain a claim or be derived from a source record" .
