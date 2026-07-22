@@ -91,38 +91,97 @@ Prove these fail (never silently conform):
 
 Build small reviewed modules, not one giant `core.ttl`. Each is a future task with its own tests.
 
-- **Task H6 [P1] Identity/tradability module:** `LegalEntity`, time-scoped `IssuerRole` (per ADR-0005),
-  `Security`/`Instrument`, `Listing`, `Venue`, identifier, ticker alias, broker instrument, validity
-  interval, identity-assertion status/confidence.
-- **Task H7 [P1] Time/provenance module:** occurrence/effective/publication/receipt/cutoff times;
-  `SourceRecord`, `EvidenceSpan`, extraction + admission activities (PROV-O aligned), source family,
-  correction/supersession lineage.
-- **Task H8 [P1] Evidence/reasoning module:** `Observation`, `Claim`, `AdmittedAssertion`,
-  `Contradiction`, `EvidencePacket`, `InstrumentHypothesis` (with horizon), `InstrumentBeliefState`,
-  `SemanticSnapshot`.
+> **Revised after Hermes MoA improvement review** (2026-07-22, `deep-research`, 3/3 refs LIVE;
+> `docs/research/raw/ontology-hardening/17-p1p2-hermes-moa-review.md`). Key changes: added a
+> dependency-manifest task H0; **reordered to H6 → H7 → H9 → H8 → H11 → H10** so a module never
+> references terms it doesn't import; split identity from tradability and time from provenance; and
+> made temporal/cutoff safety, correction lineage, false-merge, and projection leakage first-class.
+
+- **Task H0 [P1] Module dependency manifest (build BEFORE H6):** machine-readable `owl:imports` DAG
+  plus a per-module ontology IRI and `owl:versionIRI` recorded in the `SemanticReleaseManifest`. The
+  build fails if any module references a term outside its import closure. This is what keeps manifest
+  hashing (H4) and projection parity (H13) honest as modules multiply.
+- **Task H6a [P1] Identity canonicalization:** `LegalEntity`, time-scoped `IssuerRole` (ADR-0005),
+  `Security`/`Instrument`, `Listing`, `Venue`, identifier, ticker alias, `BrokerInstrument`, validity
+  interval, and a governed `IdentityAssertion` (status `candidate|asserted|confirmed|disputed|
+  rejected|superseded`, confidence, validity, provenance). Identity/broker-instrument links use a
+  typed, revocable `tw:mapsToInstrument` with a validity interval — **never `owl:sameAs` or functional
+  properties** (open-world `sameAs` propagates merges transitively and irreversibly). SHACL rejects
+  two distinct Securities asserted equivalent without a governed `IdentityAssertion`; a SPARQL
+  constraint rejects one broker instrument mapped to two Securities in overlapping intervals.
+- **Task H6b [P1] Tradability / capability:** `VenueSegment`, `ListingStatus`, `BrokerInstrument`
+  orderability, `Restriction`, `CircuitBand`, settlement, `DataEntitlement`, `AccountCapabilityAssignment`,
+  `TradabilityRiskPacket` — each account/snapshot/policy-scoped and deny-by-default. Keeps the broad
+  discovery universe and the account tradable allowlist provably distinct (spec §4, §8).
+- **Task H7a [P1] Time module:** `owl:imports <http://www.w3.org/2006/time>`; declare
+  `tw:occurredAt`, `tw:effectiveAt`, `tw:publishedAt`, `tw:receivedAt`, `tw:decisionCutoffAt`,
+  `tw:snapshotId`, each with explicit domain and `sh:maxCount 1`; bind `SemanticSnapshot` to a cutoff.
+  Intervals map to `time:Interval`/`hasBeginning`/`hasEnd` with a **documented half-open convention**
+  and an explicit open-interval sentinel (never null-defaults-to-now). Instance validation rejects any
+  admitted fact with `receivedAt > decisionCutoffAt`. **No universal `occurred-before-published` or
+  `published ≤ received` axiom** — guidance is future-effective and backfilled/embargoed data is real;
+  gate on **receipt-vs-cutoff only**.
+- **Task H7b [P1] Provenance module:** `owl:imports <http://www.w3.org/ns/prov>`; `SourceRecord`/
+  `Claim`/`EvidenceSpan`/`SemanticSnapshot` as `prov:Entity`; `ExtractionActivity`/`AdmissionActivity`/
+  `ProjectionBuildActivity` as `prov:Activity`; extractor/model/human/policy as `prov:Agent`; use
+  `prov:used`/`wasGeneratedBy`/`wasDerivedFrom`/`wasAttributedTo`/`wasRevisionOf`/`generatedAtTime`/
+  `invalidatedAtTime`. Model correction/supersession as a `CorrectionActivity` with mandatory
+  `prov:used` → superseded record and `prov:wasRevisionOf` on the new record; SHACL rejects a
+  correction lacking a superseded target and rejects in-place mutation of the superseded fact. A
+  separate `tw:ForwardGuidanceRecord` shape explicitly **allows** `effectiveAt > receivedAt`.
+  Provenance proves lineage, not correctness — admission status stays orthogonal.
 - **Task H9 [P1] Events/relationships module:** typed corporate + macro events; issuer/security/
-  sector/commodity/FX exposure paths; distinguish observed vs contractual relationship vs causal
-  hypothesis.
-- **Task H10 [P1] Technical/fundamental/sentiment markers:** typed marker definitions with unit,
-  window, sampling frequency, horizon, calculation version, direction, freshness, corroboration policy.
-- **Task H11 [P1] Portfolio-context module:** account/mandate/beneficial-owner, holding, reservation,
-  exposure, concentration, currency, completeness state. Broker balances/execution stay in the
-  operational relational ledger; project only governed facts.
+  sector/commodity/FX exposure paths. A `tw:RelationshipAssertion` superclass carries a mandatory
+  `tw:relationshipType` enum (`OBSERVED|CONTRACTUAL|CAUSAL_HYPOTHESIS|INFERRED`), confidence, subject/
+  object roles, provenance and validity interval; SHACL rejects a `RelationshipAssertion` lacking
+  `relationshipType`; causal/inferred relationships are risk-only unless corroborated and activated.
+- **Task H8 [P1] Evidence/reasoning module (imports H9):** `Observation`, `Claim`, `AdmittedAssertion`,
+  `Contradiction` (must name an opposing target — reject self-/target-less contradiction),
+  `EvidencePacket`, `InstrumentHypothesis` (with horizon), plus `SourceFamily`, `EvidenceSpan`,
+  `ExtractionModelVersion`, `AdmissionPolicyRelease`, `AssertionStatus`. Every `AdmittedAssertion`
+  links to an admission activity + policy + source record/span. Syndicated/same-`SourceFamily` copies
+  cannot count as independent corroboration.
+- **Task H8b [P1] Belief-state projection (imports H9, H10):** `InstrumentBeliefState`,
+  `SemanticSnapshot` binding, and the categorical-only `DecisionFeatureSet` projection — emitted only
+  through an effective `DecisionFeatureActivation`. Split out of H8 because it depends on events (H9)
+  and markers (H10).
+- **Task H11 [P1] Portfolio-projection context:** an explicit **projection allowlist** — projectable =
+  concentration *band* / exposure *category* / completeness-dimension enum / mandate metadata / policy
+  release IDs / partition metadata; relational-only = cash buckets, buying power, order quantities,
+  fill prices, cost basis. A `tw:PortfolioProjectionShape` with `sh:closed true` fails on any raw
+  quantity/cash/price/fill literal; a separate shape forbids household pooling of buying power/cash/
+  orders across accounts (spec §5).
+- **Task H10 [P1] Technical/fundamental/sentiment markers (imports H8/H9):** typed marker definitions
+  with unit, window, sampling frequency, horizon, calculation version, direction, freshness, and a
+  corroboration policy.
+- **Task H11b [P1] Governance/release module:** first-class `SemanticRelease`/`ShapeRelease`/
+  `MappingRelease`/`QueryPackRelease`/`InferencePolicyRelease`/`PolicyAssignment` with effective
+  interval, supersession and approval evidence, so every answer is reproducible from exact releases.
 
 ---
 
 ## P2 — prove usefulness rather than merely grow (planned; not executed here)
 
-- **Task H12 [P2] Competency-query pack:** a versioned pack derived from concrete agent questions
-  (candidate evidence, contradictions, freshness, tradability, portfolio context), each with golden
-  answers, counterexamples, cutoff-leakage and identity-trap cases. Extends the relational baseline
-  beyond today's `evidence_for(instrument_id, data_snapshot_id)`.
+- **Task H12 [P2] Competency-query pack:** ≥3 queries per module, with mandatory coverage of
+  identity-disambiguation, cutoff-leakage, correction/supersession, contradiction, and
+  portfolio-completeness. Every query ships ≥1 positive golden + ≥1 expected-empty counterexample +
+  ≥1 cutoff-exclusion case, each with its SPARQL text, expected rows, a poisoned graph, and a p95
+  latency budget; CI fails otherwise. Extends the relational baseline beyond today's
+  `evidence_for(instrument_id, data_snapshot_id)`.
 - **Task H13 [P2] Projection parity + challenger evaluation:** relational, RDF and Neo4j answers must
   agree on the exact snapshot; disagreement degrades to the relational champion and is recorded.
-  Evaluate the challenger on answer correctness, provenance completeness, cutoff safety, false merges,
-  latency, degradation, and incremental decision value.
-- **Task H14 [P2] Governed promotion:** a semantic feature is promoted only when it improves a sealed
-  downstream evaluation without harming protected safety metrics, gated by `DecisionFeatureActivation`.
+  Define `relational_champion_score` (precision / recall / p95 latency on the H12 pack) as the null
+  hypothesis. A challenger is eligible only if `recall ≥ champion` AND `precision ≥ champion − ε`
+  (ε ≤ 0.05) AND **zero new** cutoff-leakage AND **zero new** false-merge positives AND ≥1
+  pre-specified metric improves by a meaningful out-of-sample effect size on a frozen evaluation
+  manifest. "Incremental decision value" = change in a sealed, out-of-sample retrospective outcome
+  metric attributable to the feature — never in-sample query counts.
+- **Task H14 [P2] Governed promotion and demotion:** a semantic feature is promoted only when H13
+  passes, gated by `DecisionFeatureActivation`, with the frozen evaluation manifest stored as
+  provenance **before** activation and a cooldown via `PromotionPolicyRelease`. Add a
+  `DecisionFeatureDeactivation` (immutable release mirroring activation) and **automatic
+  demotion-to-research-only on any protected-safety-metric regression** — turning a feature off is a
+  policy release, never a code change.
 
 ## Acceptance for this PR (P0 only)
 
