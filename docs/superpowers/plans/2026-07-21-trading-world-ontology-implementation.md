@@ -2,9 +2,9 @@
 
 > **Do not execute this plan as the Day-9 critical path.** The live-V1 scope and sequencing were
 > amended on 2026-07-22 by
-> `docs/superpowers/specs/2026-07-22-live-v1-architecture-amendment.md`. The successor nine-day plan
-> selects only the ontology kernel needed for the first vertical slice; this file remains the
-> detailed post-V1 expansion plan.
+> `docs/superpowers/specs/2026-07-22-live-v1-architecture-amendment.md`. The successor
+> `docs/superpowers/plans/2026-07-22-nine-day-live-v1-implementation.md` selects only the ontology
+> kernel needed for the first vertical slice; this file remains the detailed post-V1 expansion plan.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
