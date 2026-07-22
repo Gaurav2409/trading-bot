@@ -23,9 +23,9 @@
 | 4 | 9–10 | Validated market snapshots, discovery coverage, tradability packets | ✅ done |
 | 5 | 11 | Relational champion, ontology kernel, typed agent seam pass | ✅ done |
 | 6 | 12–13 | Deterministic sizing/risk + India/US compliance pass replay | ✅ done |
-| 7 | 14–15 | Durable execution, protection, kill states, broker write adapters | ⬜ |
-| 8 | 16–17 | Reconciliation, retrospective, API, operator console e2e | ⬜ |
-| 9 | 18 | Both broker T0 readiness receipts + reversible activation runbook | ⬜ |
+| 7 | 14–15 | Durable execution, protection, kill states, broker write adapters | ✅ done |
+| 8 | 16–17 | Reconciliation, retrospective, API, operator console e2e | ✅ done |
+| 9 | 18 | Both broker T0 readiness receipts + reversible activation runbook | ✅ done |
 
 ## Task progress
 
@@ -48,7 +48,7 @@
 | 15 | Capability-gated Kite + Alpaca writes | ✅ done | 0eba3c4 | day-7 boundary |
 | 16 | Reconciliation + retrospective loop | ✅ done | ebca19a | day-8 boundary |
 | 17 | Scheduler, API, operator console | ✅ done | 7470542 | day-8 boundary |
-| 18 | Two-broker replay, readiness, scoped T0 authority | ⬜ not started | — | — |
+| 18 | Two-broker replay, readiness, scoped T0 authority | ✅ done | be0d971 | day-9 boundary |
 
 ## Non-negotiable invariants (guardrails for every task)
 
