@@ -41,7 +41,7 @@
 | 8 | Portfolio snapshots, completeness, analysis gate | ✅ done | 80991df | day-3 boundary |
 | 9 | Validated multi-clock market-data snapshots | ✅ done | cef617d | day-4 boundary |
 | 10 | Broad discovery, CoverageReceipts, tradability packets | ✅ done | c1828ad | day-4 boundary |
-| 11 | Typed research evidence, relational champion, ontology kernel | ⬜ not started | — | — |
+| 11 | Typed research evidence, relational champion, ontology kernel | ✅ done | a2b7888 | day-5 boundary |
 | 12 | Deterministic sizing, risk, CAS reservations | ⬜ not started | — | — |
 | 13 | India + US compliance gates | ⬜ not started | — | — |
 | 14 | Durable execution, kill states, protection | ⬜ not started | — | — |
