@@ -1,34 +1,60 @@
-# trading-bot
+# Trading OS
 
-Intelligent multi-market equity trading bot for Indian (NSE/BSE), US (NYSE/NASDAQ), and European (XETRA) markets.
+Evidence-gated, two-broker, long-only cash-equity Trading OS.
 
-Built on a **12-agent LangGraph architecture** with broker MCP integrations for Zerodha Kite Connect, Angel One SmartAPI, and Interactive Brokers (IBKR).
+- **Zerodha Kite Connect** — NSE/BSE cash equities, INR strategy sleeve.
+- **Alpaca** — supported US venues, USD strategy sleeve.
 
-## Markets
+Built as a modular Python event-ledger application: account-partitioned broker observations,
+current-portfolio projections, immutable policy releases, deterministic decisioning, and
+ports-and-adapters broker integration. Postgres is the authoritative relational path; Valkey is
+disposable coordination state; OWL/SHACL, Fuseki and Neo4j are rebuildable research projections.
 
-| Market | Exchange | Broker | Data Feed |
-|--------|----------|--------|-----------|
-| India | NSE / BSE | Zerodha Kite Connect, Angel One | Kite WebSocket, NSE bhavcopy |
-| US | NYSE / NASDAQ | IBKR ib_insync | Polygon.io, Alpaca, IEX Cloud |
-| Europe | XETRA | IBKR (IBIS routing) | Deutsche Börse MDS, IBKR |
+The controlling documents are:
 
-## Agent Roster
+- Spec: `docs/superpowers/specs/2026-07-22-live-v1-architecture-amendment.md`
+- Plan: `docs/superpowers/plans/2026-07-22-nine-day-live-v1-implementation.md`
+- ADRs: `docs/adr/0001..0003`
 
-12 LangGraph nodes: Market Scanner → Fundamental / Technical / Macro / Sentiment / Alt Data Analysts → Signal Aggregator + Red Team → Portfolio Manager → Risk Manager → Execution Agent → Compliance Agent.
+> The `2026-07-21` plans (paper-first, EOD-only, ontology-sequenced) are superseded and marked
+> "do not execute." The raw MoA extension drafts returned NO-GO and are not specifications.
 
-## Status
+## Core invariants
 
-Research complete. Implementation pending — see `docs/trading-bot-research.md` for the full design.
+- Research agents never emit quantity, price, target weight, broker order, or executable command.
+- Every exposure-increasing decision binds fresh, partitioned, current portfolio state.
+- Broker custody observations and OS intention/history stay distinct; reconciliation never silently
+  chooses a winner.
+- Each order belongs to one Brokerage Account, capital envelope, policy set and kill generation.
+- Policy changes create immutable, effective-dated releases; they never reset loss, drawdown or
+  history.
+- Relational retrieval is the permanent decision champion; RDF and Neo4j are rebuildable projections.
+- Family and non-equity execution are deny-by-default in V1.
 
-## Quick Start
+## Live activation is a policy operation, not a config edit
+
+Enabling live trading is **not** achieved by editing a base URL or setting `ALPACA_PAPER=false`.
+A live write requires a broker-scoped, current `LiveAuthorityReceipt` matching the account, policy
+release versions, readiness checks and current kill generation. Kite interactive login and session
+renewal are operator-owned steps (there is no automated TOTP login in this system).
+
+## Running locally
 
 ```bash
-uv sync
+make sync            # uv sync --extra dev
+make services-up     # Postgres/TimescaleDB, Valkey, Fuseki, Neo4j (localhost only)
 cp config/env.example .env
-pytest tests/unit/
-python -m src.main --market india --mode paper
+make verify          # ruff -> mypy -> pytest, in that order
 ```
 
-## Docs
+## Repository map
 
-- [Research & Design](docs/trading-bot-research.md) — MoA-synthesized research covering all aspects of the system
+```
+docs/            research, controlling spec/plan, ADRs, runbooks
+src/trading_os/  application packages (kernel, identity, policy, ledger, brokers, portfolio,
+                 market_data, discovery, tradability, research, ontology, decision, execution,
+                 retrospective, app)
+tests/           unit, contract, integration, replay and live-readiness tests
+deploy/          Compose service stack and operator configuration
+web/             React operator console with TradingView Lightweight Charts
+```
