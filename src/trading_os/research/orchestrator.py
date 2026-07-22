@@ -12,6 +12,11 @@ from typing import Protocol
 from pydantic import BaseModel
 
 from trading_os.research.models import EvidenceDomain, EvidencePacket
+from trading_os.research.seam import (
+    CategoricalSeamViolation,
+    assert_categorical_assessment,
+    reject_forbidden_token,
+)
 
 
 class ResearchQuestion(BaseModel, frozen=True):
@@ -44,6 +49,19 @@ def admit_packet(packet: EvidencePacket, question: ResearchQuestion) -> Evidence
     allowed = set(question.source_record_ids)
     if not cited.issubset(allowed):
         raise AdmissionError("packet cites source records outside the question scope")
+    # Categorical evidence seam (spec §4, §16): the primary constitutional
+    # invariant. The assessment must be a registered categorical value for the
+    # domain and carry no executable number; support/contradiction/missing
+    # tokens must carry no executable-number field name. This is the idempotent
+    # defence at the port boundary that no harness node path can bypass — a
+    # model-authored assessment like "agent_2500" is rejected here even if it
+    # slips past an upstream seam node.
+    try:
+        assert_categorical_assessment(packet.domain, packet.assessment)
+        for token in (*packet.support, *packet.contradictions, *packet.missing):
+            reject_forbidden_token(token)
+    except CategoricalSeamViolation as violation:
+        raise AdmissionError(f"categorical seam violation: {violation}") from violation
     # Sentiment is risk-only unless corroborated by a primary source.
     if packet.domain is EvidenceDomain.SENTIMENT and "primary_corroboration" in packet.missing:
         if packet.eligibility_effect != "risk_only":

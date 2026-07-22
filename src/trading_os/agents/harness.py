@@ -64,6 +64,11 @@ from trading_os.research.orchestrator import (
     ResearchQuestion,
     admit_packet,
 )
+from trading_os.research.seam import (
+    CategoricalSeamViolation,
+    assert_categorical_assessment,
+    reject_forbidden_token,
+)
 from trading_os.research.source_coverage import (
     SourceCoveragePolicyRelease,
     SourceCoverageReceipt,
@@ -71,27 +76,8 @@ from trading_os.research.source_coverage import (
 )
 from trading_os.research.watchers import SourceRecord
 
-# Executable-number field names that must never cross the evidence seam
-# (spec §4, §16). Their presence anywhere in a categorical artifact is a
-# categorical-seam violation.
-_FORBIDDEN_SEAM_TOKENS: frozenset[str] = frozenset(
-    {
-        "price",
-        "quantity",
-        "target",
-        "target_price",
-        "expected_return",
-        "position_weight",
-        "conviction",
-        "conviction_multiplier",
-        "order_intent",
-    }
-)
-
-
-class CategoricalSeamViolation(RuntimeError):
-    """Raised inside the categorical-seam node when an executable number, an
-    out-of-scope citation, or an instrument switch reaches the seam."""
+# The executable-number field-name tokens and the CategoricalSeamViolation are
+# owned by trading_os.research.seam and re-exported here for the seam node.
 
 
 @dataclass
@@ -423,31 +409,34 @@ class DomainAgentHarness:
     def _reject_executable_numbers(self, workspace: _RunWorkspace) -> None:
         draft = workspace.draft
         assert draft is not None
-        # Inspect both the mapped draft and the raw model judgement so a
-        # smuggled executable number cannot be scrubbed by compatibility
-        # mapping before the seam sees it.
-        tokens: set[str] = {
-            draft.assessment.lower(),
-            *(rid.lower() for rid in draft.support_record_ids),
-            *(rid.lower() for rid in draft.contradiction_record_ids),
-            *(item.lower() for item in draft.missing),
-        }
+        question = workspace.question
+        # Closed-vocabulary allowlist + numeric-run rejection on the mapped
+        # assessment AND the raw model judgement assessment, so a smuggled
+        # executable number (e.g. "agent_2500") cannot pass by being scrubbed by
+        # compatibility mapping before the seam sees it.
+        assert_categorical_assessment(question.domain, draft.assessment)
+        if workspace.judgement is not None:
+            assert_categorical_assessment(
+                question.domain, workspace.judgement.assessment
+            )
+        # No executable-number field-name token anywhere in the citation or
+        # missing sets of either the draft or the raw judgement.
+        tokens: list[str] = [
+            *draft.support_record_ids,
+            *draft.contradiction_record_ids,
+            *draft.missing,
+        ]
         if workspace.judgement is not None:
             judgement = workspace.judgement
-            tokens.update(
-                {
-                    judgement.assessment.lower(),
-                    *(rid.lower() for rid in judgement.support_record_ids),
-                    *(rid.lower() for rid in judgement.contradiction_record_ids),
-                    *(item.lower() for item in judgement.missing),
-                }
+            tokens.extend(
+                (
+                    *judgement.support_record_ids,
+                    *judgement.contradiction_record_ids,
+                    *judgement.missing,
+                )
             )
         for token in tokens:
-            for forbidden in _FORBIDDEN_SEAM_TOKENS:
-                if forbidden in token:
-                    raise CategoricalSeamViolation(
-                        f"executable number token {forbidden!r} reached the seam"
-                    )
+            reject_forbidden_token(token)
 
     def _reject_out_of_scope_citations(self, workspace: _RunWorkspace) -> None:
         draft = workspace.draft
@@ -499,7 +488,12 @@ class DomainAgentHarness:
         *,
         reason: str | None = None,
     ) -> EvidencePacket:
-        missing = ("agent_result",) if reason is None else ("agent_result", reason)
+        # The missing field carries only categorical tokens — never the raw
+        # violation reason, which may itself contain a forbidden field-name word
+        # (e.g. "price") that admit_packet would then reject, masking a handled
+        # failure as a catastrophe. The reason is recorded on the ledger safety
+        # event instead.
+        missing = ("agent_result",)
         return EvidencePacket(
             packet_id=f"packet:{question.question_id}",
             instrument_id=question.instrument_id,

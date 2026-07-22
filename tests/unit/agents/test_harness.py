@@ -318,6 +318,55 @@ async def test_malicious_target_price_becomes_explicit_missing(
     assert packet.source_record_ids == ()
 
 
+async def test_bare_number_assessment_is_rejected_by_the_closed_vocabulary(
+    harness_factory: Callable[[str], DomainAgentHarness],
+) -> None:
+    # Regression (workflow critic): a substring blocklist over field-name words
+    # ("price", "target", ...) fails open on a bare number that avoids those
+    # words, e.g. "agent_2500". The seam must be a closed-vocabulary allowlist:
+    # any assessment carrying a digit or outside the registered categorical
+    # vocabulary is rejected and becomes explicit missing.
+    role = FixtureLLMRole(
+        {
+            "judge:issuer:1:board_meeting": EventJudgement(
+                assessment="agent_2500",
+                support_record_ids=("nse:1",),
+                contradiction_record_ids=(),
+                missing=(),
+            )
+        }
+    )
+    harness = harness_factory("nse_only_complete")
+    harness._llm = role  # type: ignore[attr-defined]
+    packet = await harness.investigate(question_for("nse_only_complete"))
+    assert packet is not None
+    assert packet.assessment == "categorical_seam_violation"
+    assert packet.eligibility_effect == "neutral"
+    assert packet.source_record_ids == ()
+
+
+async def test_unknown_assessment_outside_vocabulary_is_rejected(
+    harness_factory: Callable[[str], DomainAgentHarness],
+) -> None:
+    # An assessment with no digits and no forbidden word but outside the
+    # registered categorical vocabulary must still fail closed.
+    role = FixtureLLMRole(
+        {
+            "judge:issuer:1:board_meeting": EventJudgement(
+                assessment="strong_buy_recommendation",
+                support_record_ids=("nse:1",),
+                contradiction_record_ids=(),
+                missing=(),
+            )
+        }
+    )
+    harness = harness_factory("nse_only_complete")
+    harness._llm = role  # type: ignore[attr-defined]
+    packet = await harness.investigate(question_for("nse_only_complete"))
+    assert packet is not None
+    assert packet.assessment == "categorical_seam_violation"
+
+
 async def test_out_of_scope_citation_becomes_explicit_missing(
     harness_factory: Callable[[str], DomainAgentHarness],
 ) -> None:
