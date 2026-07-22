@@ -522,6 +522,17 @@ Tests use the highest stable seam: `ResearchAgentPort.investigate()` through `Re
 - run bounded spikes for Deep Agents, remote MCP, Pydantic AI, and DSPy;
 - keep all agent output shadow-only.
 
+**P0 verification status (2026-07-23):** Delivered and verified. The recorded
+SEC/NSE/BSE corporate-event tracer passes the whole constitutional fixture
+matrix through the unchanged `ResearchAgentPort`; every expected failure returns
+an admitted explicit-missing packet, only ledger/release catastrophe returns
+`None`, and production and replay wirings produce byte-identical packets and
+canonical ledger event hashes. The executable acceptance gate is
+`tests/integration/agents/test_p0_acceptance.py`; the operator-readable outcome
+interpretation (complete, degraded, contradictory, insufficient, catastrophic,
+inapplicable) is documented in
+[Domain-Agent Shadow-Run Runbook](../../operations/domain-agent-shadow-runbook.md).
+
 ### P1 — remaining profiles and MoA trajectories
 
 - add the other nine profile releases and their official-source policies;
