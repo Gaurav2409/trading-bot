@@ -1,0 +1,34 @@
+{
+  "positions": [
+    {
+      "symbol": "TESTUS",
+      "exchange": "NASDAQ",
+      "asset_id": "aaaaaaaa-0000-0000-0000-000000000001",
+      "qty": "5",
+      "qty_available": "5",
+      "avg_entry_price": "40.00",
+      "current_price": "51.20",
+      "side": "long"
+    }
+  ],
+  "account": {
+    "currency": "USD",
+    "cash": "80.00",
+    "buying_power": "80.00",
+    "trading_blocked": false,
+    "account_blocked": false
+  },
+  "open_orders": [
+    {
+      "id": "bbbbbbbb-0000-0000-0000-000000000002",
+      "client_order_id": null,
+      "symbol": "TESTUS",
+      "exchange": "NASDAQ",
+      "side": "buy",
+      "qty": "2",
+      "filled_qty": "0",
+      "limit_price": "49.00",
+      "status": "new"
+    }
+  ]
+}

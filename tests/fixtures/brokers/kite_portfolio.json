@@ -1,0 +1,38 @@
+{
+  "holdings": [
+    {
+      "tradingsymbol": "TESTCO",
+      "exchange": "NSE",
+      "isin": "INE000000001",
+      "quantity": 7,
+      "t1_quantity": 2,
+      "pledged_quantity": 1,
+      "authorised_quantity": 7,
+      "average_price": 100.5,
+      "last_price": 132.25
+    }
+  ],
+  "positions": {
+    "net": [
+      {
+        "tradingsymbol": "TESTCO",
+        "exchange": "NSE",
+        "isin": "INE000000001",
+        "quantity": 0,
+        "average_price": 0,
+        "last_price": 132.25,
+        "product": "CNC"
+      }
+    ]
+  },
+  "orders": [],
+  "margins": {
+    "equity": {
+      "net": 25000.0,
+      "available": {
+        "live_balance": 25000.0,
+        "cash": 25000.0
+      }
+    }
+  }
+}
