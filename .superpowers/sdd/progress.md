@@ -17,9 +17,9 @@
 
 | Day | Tasks | Exit evidence | Status |
 |---|---|---|---|
-| 1 | 1–3 | Clean toolchain; kernel, identity, immutable policy contracts pass | ⬜ |
-| 2 | 4–6 | Event ledger, broker contract suite, read-only adapters pass | ⬜ |
-| 3 | 7–8 | Portfolio normalization, completeness, analysis gate pass | ⬜ |
+| 1 | 1–3 | Clean toolchain; kernel, identity, immutable policy contracts pass | ✅ merged (PR #1) |
+| 2 | 4–6 | Event ledger, broker contract suite, read-only adapters pass | ✅ done |
+| 3 | 7–8 | Portfolio normalization, completeness, analysis gate pass | ✅ done |
 | 4 | 9–10 | Validated market snapshots, discovery coverage, tradability packets | ⬜ |
 | 5 | 11 | Relational champion, ontology kernel, typed agent seam pass | ⬜ |
 | 6 | 12–13 | Deterministic sizing/risk + India/US compliance pass replay | ⬜ |
@@ -34,11 +34,11 @@
 | 1 | Repository baseline + one-command verification | ✅ done | d96ba9b | day-1 boundary |
 | 2 | Typed kernel + immutable event envelope | ✅ done | 66cede5 | day-1 boundary |
 | 3 | Legal parties, account authority, policy releases | ✅ done | fecdc83 | day-1 boundary |
-| 4 | Append-only Postgres event store + replay | ⬜ not started | — | — |
-| 5 | Normalized broker observation/execution ports | ⬜ not started | — | — |
-| 6 | Read-only Kite + Alpaca adapters | ⬜ not started | — | — |
-| 7 | Portfolio field authority + normalization | ⬜ not started | — | — |
-| 8 | Portfolio snapshots, completeness, analysis gate | ⬜ not started | — | — |
+| 4 | Append-only Postgres event store + replay | ✅ done | a88e919 | day-2 boundary |
+| 5 | Normalized broker observation/execution ports | ✅ done | 44a1672 | day-2 boundary |
+| 6 | Read-only Kite + Alpaca adapters | ✅ done | cc2eb73 | day-2 boundary |
+| 7 | Portfolio field authority + normalization | ✅ done | 3dcdd2e | day-3 boundary |
+| 8 | Portfolio snapshots, completeness, analysis gate | ✅ done | 80991df | day-3 boundary |
 | 9 | Validated multi-clock market-data snapshots | ⬜ not started | — | — |
 | 10 | Broad discovery, CoverageReceipts, tradability packets | ⬜ not started | — | — |
 | 11 | Typed research evidence, relational champion, ontology kernel | ⬜ not started | — | — |
