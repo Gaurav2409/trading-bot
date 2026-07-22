@@ -58,8 +58,15 @@ class ResearchOrchestrator:
     async def run(self, question: ResearchQuestion) -> EvidencePacket | None:
         try:
             candidate = await self._agent.investigate(question)
-        except Exception:  # noqa: BLE001 - agent failure -> explicit missing, never a block
+        except Exception:  # noqa: BLE001
+            # Catastrophic port failure (unavailable canonical ledger or an
+            # unresolved immutable release closure) is the only path to None.
+            # Expected model/tool/budget failures are handled inside the
+            # DomainAgentHarness and return an admitted explicit-missing packet,
+            # never an exception, so the relational champion is never disabled.
             return None
         if candidate is None:
             return None
+        # Idempotent defence: the orchestrator re-validates every candidate at
+        # the port boundary even though the harness already admitted it.
         return admit_packet(candidate, question)
