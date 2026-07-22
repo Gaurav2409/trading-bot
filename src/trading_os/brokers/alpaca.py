@@ -14,6 +14,7 @@ from trading_os.brokers.models import (
     PositionObservation,
 )
 from trading_os.kernel.ids import AccountId, SnapshotId
+from trading_os.policy.capability import AuthorityDecision
 
 BROKER = "alpaca"
 
@@ -124,8 +125,35 @@ class AlpacaBroker:
             update={"received_at": received_at, "missing_segments": frozenset(missing)}
         )
 
-    async def submit_order(self, request: OrderRequest) -> OrderAck:
-        raise LiveWriteDisabled("Alpaca live writes are disabled until Task 15")
+    async def submit_order(
+        self, request: OrderRequest, authority: AuthorityDecision | None = None
+    ) -> OrderAck:
+        if authority is None or not authority.allowed:
+            reason = "no authority" if authority is None else authority.reason
+            raise LiveWriteDisabled(f"Alpaca live write denied: {reason}")
+        import anyio
+
+        response = await anyio.to_thread.run_sync(
+            lambda: self._client.submit_order(
+                symbol=str(request.instrument_id).split(":", 1)[1],
+                qty=request.quantity,
+                side=request.side.value,
+                type="limit",
+                limit_price=request.limit_price_minor / 100,
+                time_in_force="day",
+                client_order_id=request.client_order_id,
+            )
+        )
+        return OrderAck(
+            client_order_id=request.client_order_id,
+            broker_order_id=str(response["id"]),
+            accepted_at=datetime.now(UTC),
+            status="accepted",
+        )
 
     async def cancel_order(self, broker_order_id: str) -> None:
-        raise LiveWriteDisabled("Alpaca live writes are disabled until Task 15")
+        import anyio
+
+        await anyio.to_thread.run_sync(
+            lambda: self._client.cancel_order_by_id(broker_order_id)
+        )
