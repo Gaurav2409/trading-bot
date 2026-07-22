@@ -1,0 +1,44 @@
+You are the Mixture-of-Agents aggregator. Independently combine the perspectives of a portfolio-risk architect, brokerage integration engineer, multi-tenant security architect, domain modeller, and adversarial reviewer.
+
+Review this hypothetical, non-proprietary design problem:
+
+A new personal trading operating system initially supports long-only cash equities through one Indian broker and one US broker. Research agents may discover and interpret opportunities, but deterministic code alone controls eligibility, quantity, price, risk and execution. It uses an append-only relational ledger, snapshot-scoped portfolio state, immutable versioned risk policies, broker reconciliation and account-level kill switches. A versioned ontology and graph projections support research and explanations but are not the execution system of record. The first end-to-end live vertical slice is intended in nine days; mature learned alpha is explicitly deferred.
+
+New requirements:
+1. Current-portfolio analysis must be part of V1, including holdings and positions not created by the OS.
+2. The domain model must avoid blocking later profiles, household/family aggregation and separately authorised family brokerage accounts, although multi-user execution need not ship in V1.
+
+Public constraints:
+- Zerodha documents separate holdings and positions portfolio endpoints. Holdings include quantities, settlement/authorisation state, average/last prices and P&L. Its API does not provide complete back-office lifetime P&L or reliable strategy-origin tags, so the OS needs its own durable ledger and provenance. Source: https://kite.trade/docs/connect/v3/portfolio/
+- Alpaca's current-position endpoint includes cost basis, quantity and market value, but closed positions disappear; activity/fill history and the OS ledger remain necessary. Sources: https://docs.alpaca.markets/us/reference/getallopenpositions and https://docs.alpaca.markets/us/reference/portfolio-history
+- Broker credentials and order authority are account-scoped. Family aggregation must not imply custody, consent or trading authority.
+
+HARD RULES
+- Produce design research, not investment advice or code.
+- A consolidated household view never changes account-level owner, authority, capital envelope, risk, reconciliation or kill switch.
+- Never claim complete historical provenance when sources cannot support it.
+- Explicitly separate Day-9 V1, foundation-only seams and deferred functionality.
+- Mark statements as SOURCE-ANCHORED, ARCHITECTURAL-INFERENCE or OPEN-VERIFICATION where useful.
+
+Emit exactly these sections:
+
+## 1. Executive verdict
+State the three most consequential design changes.
+
+## 2. V1 CurrentPortfolioAnalysis contract
+Define inputs, canonical records, outputs, pre-trade use, clocks, completeness/confidence and failure behavior. Cover manual holdings, open orders, cash, unsettled/pledged quantities, cost basis, valuation, P&L, sector/country/currency/factor/concentration/correlation/liquidity/event exposures, protection coverage and freshness. Separate Day 9 from later.
+
+## 3. Household-capable domain model
+Distinguish Person, UserProfile, Household, Membership, LegalOwner, BrokerConnection, BrokerageAccount, Portfolio, Sleeve, CapitalEnvelope, TradingMandate/Consent, Role/Permission, PolicyAssignment and derived HouseholdPortfolioView. Give invariants, tenancy boundaries and secret ownership. Name which types must exist in the V1 schema.
+
+## 4. Decision-flow and semantic integration
+Show how portfolio analysis affects research ranking, deterministic risk, sizing, execution, retrospective and ontology context without stale or cross-account leakage. Name minimum typed artifacts/events.
+
+## 5. Nine-day scope and acceptance gates
+Give a realistic architecture-level Day 1-9 sequence, acceptance criteria and non-goals.
+
+## 6. Adversarial findings
+Give at least 12 failure modes with severity, detection and response, including incomplete history, duplicate identity, manual trades, stale prices, credential leakage, family-authority assumptions, cost-basis errors, currency translation, corporate actions, pledged/unsettled holdings, protection mismatch and aggregate masking.
+
+Keep output between 8 KB and 15 KB. End with:
+<!-- CHUNK-1 SELF-AUDIT: headings=1-6; portfolio_contract=present; domain_invariants=present; day9_scope=present; adversarial_count>=12; verdict=PASS|FAIL; reason=... -->

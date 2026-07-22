@@ -4,8 +4,16 @@ The shared language for representing tradable instruments, market evidence, hypo
 
 ## Identity and tradability
 
+**Legal Party**:
+A person or legally recognized organization that can own a Brokerage Account or grant authority over it.
+_Avoid_: User, household, profile
+
+**Person**:
+A natural person whose legal identity is distinct from every software profile, household membership, and brokerage credential.
+_Avoid_: User, account
+
 **Legal Entity**:
-A legally recognized organization or person that may own assets, incur obligations, or control other entities.
+A legally recognized organization that may own assets, incur obligations, issue securities, or control other entities.
 _Avoid_: Company, stock
 
 **Issuer**:
@@ -23,6 +31,86 @@ _Avoid_: Ticker, stock
 **Ticker**:
 A time-bounded venue alias for a Listing; it is not a stable identity.
 _Avoid_: Instrument ID, company ID
+
+**Discovery Universe**:
+The broad set of Listings inspected for opportunities, independent of whether they are currently eligible for trading.
+_Avoid_: Tradable universe, portfolio
+
+**Tradable Allowlist**:
+The narrower set of Listings that currently satisfy account, broker, venue, compliance, data, and risk requirements for decisioning.
+_Avoid_: Discovery universe, watchlist
+
+**Coverage Receipt**:
+An immutable account of what a detector inspected, over which time range, with which data and policy versions, including omissions and failures.
+_Avoid_: Scan completed flag
+
+**Opportunity Candidate**:
+A discovered market setup that requires tradability, evidence, portfolio, and deterministic risk evaluation before it can influence an order.
+_Avoid_: Trade, buy signal
+
+**Tradability Risk Packet**:
+A snapshot-bound assessment of whether a candidate is legally, operationally, and economically executable for a particular Brokerage Account.
+_Avoid_: Research report, recommendation
+
+## Ownership, access, and portfolios
+
+**User Profile**:
+A software identity for interaction preferences and permissions; it is not a Legal Party, owner, or brokerage credential.
+_Avoid_: Owner, account
+
+**Household**:
+A consent-scoped grouping of Legal Parties and User Profiles for derived views and tighten-only policies; it owns no account by implication.
+_Avoid_: Joint account, trading account
+
+**Household Membership**:
+A time-bounded relationship granting specified household visibility or participation without granting brokerage authority.
+_Avoid_: Trading mandate
+
+**Brokerage Account**:
+A broker-maintained custody and execution partition owned by one or more Legal Parties, with its own capital, positions, orders, compliance state, reconciliation, and kill state.
+_Avoid_: User, portfolio, household
+
+**Broker Connection**:
+A scoped credential and session relationship that may access only explicitly authorized Brokerage Accounts and operations.
+_Avoid_: Broker, account owner
+
+**Account Access Grant**:
+A revocable, time-bounded authority to read or operate a Brokerage Account within a precisely stated scope.
+_Avoid_: Household membership, role
+
+**Trading Mandate**:
+An Account Access Grant that explicitly authorizes proposing, approving, or executing specified trades for a Brokerage Account.
+_Avoid_: Consent, family membership
+
+**Portfolio Snapshot**:
+An immutable, partition-preserving cut of account custody observations, OS ledger state, reservations, prices, policies, and completeness at a decision time.
+_Avoid_: Current holdings response, household total
+
+**Current Portfolio Analysis**:
+A snapshot-bound assessment of cash, positions, orders, availability, provenance, concentration, liquidity, event exposure, and protection that gates exposure-increasing decisions.
+_Avoid_: Dashboard, performance report
+
+**Household Portfolio View**:
+A derived, permission-filtered view that preserves Brokerage Account partitions and never becomes custody or execution authority.
+_Avoid_: Household account, pooled portfolio
+
+**Capital Envelope Release**:
+An immutable, effective-dated statement of the capital and cumulative loss authorized for a Brokerage Account or sleeve.
+_Avoid_: Balance, buying power
+
+## Capability and policy
+
+**Asset Class Capability Release**:
+An immutable statement of the verified jurisdiction, product, venue, broker, data, valuation, risk, execution, protection, and reconciliation capabilities required for an asset class.
+_Avoid_: Feature flag, broker support
+
+**Account Capability Assignment**:
+A revocable, effective-dated binding of a Brokerage Account and mandate to an Asset Class Capability Release; absence means denied.
+_Avoid_: Account default, inherited permission
+
+**Promotion Policy Release**:
+An immutable definition of the evidence thresholds and review windows required to expand or reduce live authority.
+_Avoid_: Fixed waiting period
 
 ## Evidence and world state
 

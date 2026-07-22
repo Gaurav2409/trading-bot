@@ -1,5 +1,11 @@
 # Trading World Ontology — Design Amendment
 
+> **Further amended on 2026-07-22:**
+> `docs/superpowers/specs/2026-07-22-live-v1-architecture-amendment.md` controls live-product,
+> portfolio, account/family and multi-asset boundaries. This document remains controlling for
+> ontology releases, semantic snapshots, projection receipts, evaluation, and independent
+> `DecisionFeatureActivation` before semantic features gain economic influence.
+
 **Status:** Approved on 2026-07-21; validated post-review amendment approved on 2026-07-21
 
 **Amends:** `2026-07-20-trading-os-design.md`, especially D13, D14/D14a, D28, and D30

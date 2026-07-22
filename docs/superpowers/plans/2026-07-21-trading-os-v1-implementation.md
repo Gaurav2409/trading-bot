@@ -1,5 +1,10 @@
 # Trading OS v1 Implementation Plan
 
+> **Do not execute this plan as written.** Its paper-first sequencing and scope were superseded on
+> 2026-07-22 by `docs/superpowers/specs/2026-07-22-live-v1-architecture-amendment.md`. Use the
+> successor nine-day implementation plan after it is published; retain this file only as detailed
+> follow-on reference.
+
 > **Ontology coordination:** Execute Tasks 1–14 in this plan, then execute
 > `docs/superpowers/plans/2026-07-21-trading-world-ontology-implementation.md` in full. That plan
 > augments Tasks 12–13 and supersedes the semantic/KG/research responsibilities of Tasks 15–17 below.

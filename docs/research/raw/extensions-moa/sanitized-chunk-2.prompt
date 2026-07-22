@@ -1,0 +1,40 @@
+You are the Mixture-of-Agents aggregator. Independently combine the perspectives of a cross-asset trading-systems architect, FX market-structure specialist, India compliance sceptic, risk modeller, ontology/domain modeller and migration red-team reviewer.
+
+Review this hypothetical, non-proprietary design problem:
+
+A personal trading operating system initially supports long-only cash equities using deterministic risk/execution, an append-only relational ledger, immutable policy releases, broker reconciliation, and account-level kill switches. Research agents and a versioned ontology may influence typed research evidence but cannot size or execute. The architecture should later support separately authorised family accounts and other asset classes, with FX as the first example. FX is future scope, not part of the nine-day cash-equity V1.
+
+Public constraints:
+- RBI states that India-resident persons may transact in forex only with authorised persons for permitted purposes, and electronic transactions must use RBI-authorised platforms or recognised Indian exchanges. LRS cannot be used to remit margin for overseas online forex trading. Source: https://www.rbi.org.in/scripts/FS_FAQs.aspx?Id=146
+- NSE currency derivatives have explicit base/quote pairs, contract units, tick sizes, sessions, expiry cycles, settlement references and margin parameters. Sources: https://www.nseindia.com/static/products-services/currency-derivatives-contract-specification-inr and https://www.nseindia.com/static/products-services/currency-derivatives-parameters
+- Family membership alone is not trading authority. Every brokerage account retains its legal owner, credentials, consent/mandate, capital envelope, orders, positions, reconciliation, compliance state and kill switch.
+
+HARD RULES
+- This is forward architecture and adversarial research, not a recommendation to trade FX.
+- Do not assume offshore leveraged spot FX/CFDs are legal for an India-resident user.
+- Do not flatten equities and FX into a lowest-common-denominator instrument class.
+- Future tradability must be capability-gated by jurisdiction, venue, broker account, instrument, data entitlement, risk, execution, valuation and explicit policy release.
+- Mark statements as SOURCE-ANCHORED, ARCHITECTURAL-INFERENCE or OPEN-VERIFICATION where useful.
+
+Emit exactly these sections:
+
+## 7. Multi-asset architecture verdict
+Identify the stable cross-asset kernel and asset-specific plugins/policies. State boundary changes needed in the cash-equity V1 now.
+
+## 8. FX domain delta
+Compare cash equities, exchange-traded currency futures and OTC/spot FX across identity, underlying semantics, base/quote currency, pips, contract/tick/lot rules, session clocks, expiry/roll, margin/leverage, settlement, venue/price-source multiplicity, events, netting, financing/swaps, P&L and risk. Convert differences into types and invariants.
+
+## 9. Capability and compliance gating
+Design an immutable AssetClassCapabilityRelease or equivalent. Explain configurable versus constitutional gates and safe activation/deactivation.
+
+## 10. Family plus multi-asset interaction
+Define account-level versus household-level risk, currency normalization, transfer prohibition, correlated exposure, mandate scope and what must never be aggregated for execution.
+
+## 11. Migration sequence
+Sequence cash-equity V1, family read-only aggregation, separately authorised family execution, exchange-traded FX research and only then any permitted FX execution. Include schema seams, evidence gates and rollback.
+
+## 12. Red-team verdict and amendments
+Give at least 15 hidden coupling/failure traps, a GO/CONDITIONAL-GO/NO-GO verdict and exact generic design amendments.
+
+Keep output between 8 KB and 15 KB. End with:
+<!-- CHUNK-2 SELF-AUDIT: headings=7-12; fx_delta=present; capability_gate=present; family_interaction=present; adversarial_count>=15; verdict=PASS|FAIL; reason=... -->
