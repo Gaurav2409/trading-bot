@@ -13,6 +13,7 @@ dependencies = [
   "fastapi>=0.115",
   "httpx>=0.27",
   "kiteconnect>=5.0",
+  "langgraph>=1.2.9,<1.3",
   "neo4j>=5.23",
   "numpy>=1.26",
   "openai>=2.46,<2.47",
@@ -69,8 +70,9 @@ explicit_package_bases = true
 # The OpenAI and Anthropic SDKs ship ``py.typed`` and transitively re-export
 # numpy's typed API. numpy's bundled stubs use a 3.12+ ``type`` statement that
 # mypy rejects under the project's 3.11 target, so skip following the provider
-# SDK type graphs. Project code is still checked against their public surface.
+# SDK type graphs. LangGraph/LangChain re-export numpy the same way. Project code
+# is still checked against their public surface.
 [[tool.mypy.overrides]]
-module = ["openai.*", "anthropic.*"]
+module = ["openai.*", "anthropic.*", "langgraph.*", "langchain_core.*", "langchain.*"]
 follow_imports = "skip"
 follow_imports_for_stubs = true
