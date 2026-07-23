@@ -1,0 +1,16 @@
+https://www.sec.gov/search-filings/edgar-application-programming-interfaces
+https://www.sec.gov/search-filings
+https://www.nseindia.com/companies-listing/corporate-filings-announcements?tabIndex=equity
+https://www.nseindia.com/companies-listing/corporate-filings-shareholding-pattern
+https://www.nseindia.com/static/companies-listing/xbrl-information
+https://www.nseindia.com/static/market-data/corporate-data-subscription
+https://www.nseindia.com/static/market-data/real-time-data-subscription
+https://www.nseindia.com/static/market-data/nse-data-policy
+https://marketdata.bseindia.com/
+https://fred.stlouisfed.org/docs/api/fred/alfred.html
+https://fred.stlouisfed.org/docs/api/fred/overview.html
+https://www.bea.gov/news/schedule
+https://comtradeplus.un.org/
+https://developer.finra.org/docs
+https://docs.alpaca.markets/us/docs/market-data-faq
+https://www.sebi.gov.in/legal/regulations/jan-2026/securities-and-exchange-board-of-india-listing-obligations-and-disclosure-requirements-regulations-2015-last-amended-on-january-22-2026-_100004.html

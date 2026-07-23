@@ -1,0 +1,145 @@
+---
+url: https://github.com/langchain-ai/deepagents
+title: "GitHub - langchain-ai/deepagents: The batteries-included agent harness. · GitHub"
+fetched_at: 2026-07-22T18:45:59.412057+00:00
+source_id: deepagents-harness
+method: static
+status: FETCHED
+word_count: 687
+---
+
+The batteries-included agent harness.
+Deep Agents is an open source agent harness — an opinionated agent that runs out of the box. Extend, override, or replace any piece.
+Principles:
+Opinionated
+— defaults tuned for long-horizon, multi-step work
+Extensible
+— override or replace any piece without forking
+Model-agnostic
+— works with any LLM that supports tool calling: frontier, open-weight, or local
+Production-ready
+— built on LangGraph (streaming, persistence, checkpointing) with first-class tracing, evaluation, and deployment via LangSmith
+Features include:
+Sub-agents
+— delegate tasks to agents with isolated context windows
+Filesystem
+— read, write, edit, or search over pluggable local, sandboxed, or remote backends
+Context management
+— summarize long threads and offload tool outputs to disk
+Shell access
+— run commands in your sandbox of choice
+Persistent memory
+— pluggable state and store backends for cross-session recall
+Human-in-the-loop
+— approve, edit, or reject tool calls before they run
+Skills
+— reusable behaviors the agent can load on demand
+Tools
+— bring your own functions or any MCP server
+Deep Agents is available as a JavaScript/TypeScript library — see
+deepagents.js
+.
+Note
+Deep Agents Code
+— a pre-built coding agent in your terminal, similar to Claude Code or Cursor, powered by any LLM. Install with
+curl -LsSf https://langch.in/dcode | bash
+. See the
+documentation
+for the full feature set.
+Quickstart
+uv add deepagents
+from
+deepagents
+import
+create_deep_agent
+agent
+=
+create_deep_agent
+(
+model
+=
+"openai:gpt-5.5"
+,
+tools
+=
+[
+my_custom_tool
+],
+system_prompt
+=
+"You are a research assistant."
+,
+)
+result
+=
+agent
+.
+invoke
+({
+"messages"
+:
+"Research LangGraph and write a summary"
+})
+The agent can plan, read/write files, and manage its own context. Add your own tools, swap models, customize prompts, configure sub-agents, and more. See the
+documentation
+for full details.
+Tip
+For developing, debugging, and deploying AI agents and LLM applications, see
+LangSmith
+.
+FAQ
+How is this different from LangGraph or LangChain?
+LangGraph is the graph runtime. LangChain's
+create_agent
+is a minimal agent harness on top of it. Deep Agents is a more opinionated harness on top of
+create_agent
+— same building blocks, but with filesystem, sub-agents, context management, and skills bundled in. For how the three relate, see the
+LangChain ecosystem overview
+.
+Does this work with open-weight or local models?
+Yes. Any model that supports tool calling works — frontier APIs (OpenAI, Anthropic, Google), open-weight models hosted on providers like Baseten or Fireworks, and self-hosted models via Ollama, vLLM, or llama.cpp. Use any
+LangChain chat model
+.
+Can I use this in production?
+Yes! Deep Agents is built on LangGraph, designed for production agent deployments. Pair it with
+LangSmith
+for tracing, evaluation, and monitoring. See
+Going to production
+for the full guide.
+When should I use Deep Agents vs. LangChain or LangGraph directly?
+All three are layers in the same stack — see the
+LangChain ecosystem overview
+for how they relate. Use
+Deep Agents
+when you want the full harness — planning, context management, delegation — out of the box. Use
+LangChain's
+create_agent
+when you want a lighter harness without the bundled middleware. Drop to
+LangGraph
+when the agent loop itself isn't the right shape and you need a custom graph.
+The layers compose: any LangGraph
+CompiledStateGraph
+can be passed in as a sub-agent to a Deep Agent, so custom orchestration plugs in alongside the harness's defaults.
+Resources
+Examples
+— working agents and patterns
+Documentation
+— conceptual overviews and guides
+LangChain ecosystem overview
+— how Deep Agents, LangChain, LangGraph, and LangSmith fit together
+API reference
+— complete reference for all public classes, functions, and types
+Discussions
+— community forum for technical questions, ideas, and feedback
+LangChain Academy
+— Comprehensive, free courses on LangChain libraries and products, made by the LangChain team.
+Contributing Guide
+— how to contribute and find good first issues
+Code of Conduct
+— community guidelines and standards
+Acknowledgements
+Inspired by Claude Code: an attempt to identify what makes it general-purpose, and push that further.
+Security
+Deep Agents follows a "trust the LLM" model. The agent can do anything its tools allow. Enforce boundaries at the tool/sandbox level, not by expecting the model to self-police. See the
+security policy
+for more information.

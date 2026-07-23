@@ -12,6 +12,11 @@ from typing import Protocol
 from pydantic import BaseModel
 
 from trading_os.research.models import EvidenceDomain, EvidencePacket
+from trading_os.research.seam import (
+    CategoricalSeamViolation,
+    assert_categorical_assessment,
+    reject_forbidden_token,
+)
 
 
 class ResearchQuestion(BaseModel, frozen=True):
@@ -44,6 +49,19 @@ def admit_packet(packet: EvidencePacket, question: ResearchQuestion) -> Evidence
     allowed = set(question.source_record_ids)
     if not cited.issubset(allowed):
         raise AdmissionError("packet cites source records outside the question scope")
+    # Categorical evidence seam (spec §4, §16): the primary constitutional
+    # invariant. The assessment must be a registered categorical value for the
+    # domain and carry no executable number; support/contradiction/missing
+    # tokens must carry no executable-number field name. This is the idempotent
+    # defence at the port boundary that no harness node path can bypass — a
+    # model-authored assessment like "agent_2500" is rejected here even if it
+    # slips past an upstream seam node.
+    try:
+        assert_categorical_assessment(packet.domain, packet.assessment)
+        for token in (*packet.support, *packet.contradictions, *packet.missing):
+            reject_forbidden_token(token)
+    except CategoricalSeamViolation as violation:
+        raise AdmissionError(f"categorical seam violation: {violation}") from violation
     # Sentiment is risk-only unless corroborated by a primary source.
     if packet.domain is EvidenceDomain.SENTIMENT and "primary_corroboration" in packet.missing:
         if packet.eligibility_effect != "risk_only":
@@ -58,8 +76,15 @@ class ResearchOrchestrator:
     async def run(self, question: ResearchQuestion) -> EvidencePacket | None:
         try:
             candidate = await self._agent.investigate(question)
-        except Exception:  # noqa: BLE001 - agent failure -> explicit missing, never a block
+        except Exception:  # noqa: BLE001
+            # Catastrophic port failure (unavailable canonical ledger or an
+            # unresolved immutable release closure) is the only path to None.
+            # Expected model/tool/budget failures are handled inside the
+            # DomainAgentHarness and return an admitted explicit-missing packet,
+            # never an exception, so the relational champion is never disabled.
             return None
         if candidate is None:
             return None
+        # Idempotent defence: the orchestrator re-validates every candidate at
+        # the port boundary even though the harness already admitted it.
         return admit_packet(candidate, question)

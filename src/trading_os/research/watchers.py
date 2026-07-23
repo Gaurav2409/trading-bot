@@ -15,12 +15,16 @@ from pydantic import BaseModel
 class SourceRecord(BaseModel, frozen=True):
     record_id: str
     source_id: str
+    source_family_id: str
+    channel: str
     jurisdiction: str
     published_at: datetime
+    available_at: datetime
     received_at: datetime
     kind: str
     is_issuer_submission: bool
     payload_hash: str
+    content: str
 
 
 class SourceWatcher(Protocol):
