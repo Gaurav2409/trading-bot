@@ -1,0 +1,385 @@
+{
+ "_meta": {
+  "description": "Machine-readable backing for docs/V1-LEDGER.md \u2014 every original V1 task with code-grounded status.",
+  "audited_against": "main@ecf4c36 (after PRs #1-#10)",
+  "audited_on": "2026-07-24",
+  "status_values": {
+   "shipped": "present & wired",
+   "partial": "reduced/reshaped version shipped",
+   "deferred": "nothing on main"
+  },
+  "tally": {
+   "shipped": 2,
+   "partial": 36,
+   "deferred": 14,
+   "total": 52
+  },
+  "source_of_truth": "docs/V1-LEDGER.md is authoritative prose; this JSON is the queryable index."
+ },
+ "tasks": [
+  {
+   "task": "V1 Task 20",
+   "title": "India pre-order compliance rules",
+   "status": "partial",
+   "evidence": "A deterministic India gate shipped as src/trading_os/decision/compliance.py (evaluate_india + IndiaComplianceInput), fail-closed on instrument allowlist, static-IP readiness, algo-tag, settled cash, and order-rate ceiling \u2014 matching the amendment's Task 13. But the original Task-20 scope is much larger and did NOT ship: no src/trading_os/compliance/ package, no config/compliance/india.yaml versioned IndiaRules, no rule IDs (IN-OWNER-001, IN-IP-001, IN-CNC-001, IN-DDPI-001, IN-PRICE-001, etc.), no ComplianceDecision with failed_rule_ids/rules_version/evidence_hash, no CNC/settled-demat-holding-for-sells check, no DDPI capability check, no cadence-proof check, no evidence-hash recording. The shipped model returns a single {outcome, reason} pair (first-fail short-circuit), not the collect-all-failures rule-ID set the original required.",
+   "gap": "Versioned config-driven India rule table with per-rule IDs and evidence hashes; owner-allowlist, DDPI, CNC settled-holding-for-sells, unprotected-market-order, and slowest-signal-cadence rules; ComplianceDecision.failed_rule_ids collect-all (no short-circuit)."
+  },
+  {
+   "task": "V1 Task 21",
+   "title": "US security, LRS, residency, and idle-FX compliance",
+   "status": "partial",
+   "evidence": "Only the US account-state gate shipped, as evaluate_us + UsComplianceInput in src/trading_os/decision/compliance.py: it checks trading_blocked/account_blocked/trade_suspended_by_user, asset_tradable, data_entitlement, buying_power, and a PDT round-trip budget. The entire LRS/residency/idle-FX half of the original task is ABSENT: grep for idle.?fx|lrs|remittance|schedule.?fa|fx_lot|repatriat over src/ returns nothing. No PreRemittanceGate (PAN-wide USD 250,000 cap, 80%/TCS warnings, external-state staleness fail-closed), no IdleFxDispositionPolicy (value-date/deadline/FIFO, day-175 forced disposition), no residency attestation (resident-and-ordinarily-resident vs NRI/RNOR), no prohibited-classification list (margin/short/option/crypto/leveraged/inverse/commodity/synthetic ETF, indian-issuer ADR), no config/compliance/us.yaml.",
+   "gap": "PreRemittanceGate (LRS meter across local+external banks, hard-stop <250k USD, TCS/80% warnings, stale-fail-closed), IdleFxDispositionPolicy (FIFO lots, disposition deadline), residency-attestation gate, prohibited-security classification allowlist."
+  },
+  {
+   "task": "V1 Task 22",
+   "title": "Normalized BrokerAdapter and shared contract suite",
+   "status": "partial",
+   "evidence": "A normalized broker seam shipped: src/trading_os/brokers/ports.py defines BrokerPort (Protocol) with observe_account/submit_order/cancel_order; src/trading_os/brokers/models.py has canonical OrderRequest/OrderAck/PositionObservation/CashObservation/OpenOrderObservation/BrokerSnapshotObservation; src/trading_os/brokers/fake.py + tests/contract/brokers provide the reusable contract suite. But it is a reduced/renamed shape vs the original Task 22: the port is narrow (observe/submit/cancel only) \u2014 there is NO modify, get_order_status, get_positions, get_account, list_orders, list_protective_orders, reconcile_intent, or reconcile method; and critically there is NO BrokerCapabilities model at all (grep for capabilit/has_native_client_order_id/paper_supported/protective_order_kinds finds nothing in src/trading_os/brokers/). Core services therefore cannot branch on honest capability flags as the original required. No ReconciliationReport type. There is no brokers/base.py ABC \u2014 it is a Protocol.",
+   "gap": "BrokerCapabilities model (native client-order-id, bracket, fractional, protective_order_kinds, paper_supported, CA-adjusted stops); reconcile_intent/reconcile/list_protective_orders/get_order_status/modify port methods; ReconciliationReport type."
+  },
+  {
+   "task": "V1 Task 23",
+   "title": "Simulated broker with India/US market mechanics",
+   "status": "deferred",
+   "evidence": "Nothing on main implements this. There is no src/trading_os/brokers/simulated.py (only fake.py, kite.py, alpaca.py, mapping.py, models.py, ports.py), no src/trading_os/evaluation/ directory at all, no fill_model.py, no cost_model.py, and no config/costs/. Grep for simulated|fill_model|cost_model|circuit|gtt|STT|stamp.?duty|dp_charge across src/ returns only tradability/ hits (circuit-lock eligibility, unrelated). No deterministic daily-bar fill engine (limit reachability, stop trigger, gap-through-no-fill, partial-fill schedule, circuit rejection, GTT fire-once, CA cancellation, T+1 settlement), no India cost table (STT/stamp duty/exchange fee/SEBI fee/GST/per-ISIN-per-sell-day DP charge), no US commission/regulatory-fee/fractional model. The fake broker is a trivial idempotency stub, not a microstructure simulator.",
+   "gap": "SimulatedBrokerAdapter with daily-bar FillModel, India+US CostModel/fee-tax tables, settled-cash timeline, GTT/stop lifecycle and circuit/CA rejection \u2014 entirely missing."
+  },
+  {
+   "task": "V1 Task 24",
+   "title": "Alpaca adapter against paper API fixtures",
+   "status": "partial",
+   "evidence": "src/trading_os/brokers/alpaca.py ships a read-mostly Alpaca adapter: map_alpaca_snapshot (positions/cash/open orders, raw-payload SHA-256 hashing) with tests/fixtures/brokers/alpaca_portfolio.json and tests/contract/brokers/test_alpaca_read_contract.py, plus a submit_order/cancel_order gated behind AuthorityDecision (LiveWriteDisabled unless allowed). But it does NOT satisfy the original Task 24: no reconcile_intent that queries by client_order_id and returns OUTCOME_UNKNOWN (grep for reconcile_intent|outcome_unknown in brokers/ finds nothing); no capabilities() reporting has_native_client_order_id/supports_fractional_quantity/paper_supported (no BrokerCapabilities exists); IntentId->client_order_id mapping exists implicitly (OrderRequest.client_order_id) but there is no reconcile-first-on-ack-loss behavior; no tests/integration/brokers/test_alpaca_paper.py opt-in smoke test in the shipped module set.",
+   "gap": "reconcile_intent (query-by-client-id, OUTCOME_UNKNOWN on ambiguity), honest capabilities() flags, reconcile-before-resubmit on ack loss, opt-in paper smoke test."
+  },
+  {
+   "task": "V1 Task 25",
+   "title": "Kite adapter using recorded fixtures only in CI",
+   "status": "partial",
+   "evidence": "src/trading_os/brokers/kite.py ships map_kite_snapshot (holdings/positions/orders/margins with per-segment missing_segments, non-overlapping T1/pledged buckets) and a submit_order gated by AuthorityDecision that maps only LIMIT/SL order types (never MARKET) with the CNC product and a tag \u2014 matching amendment Task 6/15. But the original Task-25 heuristic-reconciliation core is ABSENT: no src/trading_os/brokers/kite_reconcile.py, no match_intent(intent, orders) that returns OUTCOME_UNKNOWN when match_count != 1 (grep for match_intent|reconcile_intent|gtt|outcome_unknown in brokers/ returns nothing), no BrokerCapabilities exposing has_native_client_order_id=False / protective_order_kinds={gtt_single,gtt_oco}, no GTT active/triggered/rejected/expired/CA-cancelled normalization, and no fixture set for order_partial/gtt_active/gtt_triggered_unfilled/token_exception (only a single kite_portfolio.json read fixture).",
+   "gap": "kite_reconcile match_intent heuristic (exact market/symbol/side/qty/price/tag/window, zero-or-multiple -> OUTCOME_UNKNOWN), GTT lifecycle normalization, capabilities() with protective_order_kinds, GTT/token-exception fixtures."
+  },
+  {
+   "task": "V1 Task 26",
+   "title": "Coordinate durable intents, approval revalidation, reconciliation-before-retry",
+   "status": "partial",
+   "evidence": "src/trading_os/execution/coordinator.py ships ExecutionCoordinator.submit with the crash-safe core: append durable OrderIntentCreated before the broker call, submit with client_order_id, append OrderAcknowledged, and replay-on-restart (returns recorded ack without resubmitting). This covers the ack-loss/no-duplicate-economic-effect intent. But most of the original Task-26 protocol is MISSING: no _revalidate step (grep for stale_approval|revalidate|reconcile|snapshot in coordinator.py returns nothing) \u2014 so no rerun of cash/risk/compliance/protection/kill checks, no HITL hash/expiry/snapshot revalidation, no 'stale_approval_snapshot' rejection; no reservation acquire/release wire (reservations.py exists separately but the coordinator does not call it); no reconcile_intent-exactly-once before retry (the broker has no reconcile_intent); no OUTCOME_UNKNOWN handling that retains reservation + reduces the symbol scope; no startup reconciliation comparing projected intentions vs broker orders/positions/cash. Reconciliation shipped only as a standalone reconcile_quantity difference-classifier in reconciliation.py, not wired into the coordinator's retry path.",
+   "gap": "Approval/snapshot/kill/compliance/risk revalidation with stale_approval_snapshot rejection; reservation acquire+release in the submit path; reconcile-before-retry-exactly-once and OUTCOME_UNKNOWN reduce-scope handling; startup reconciliation."
+  },
+  {
+   "task": "V1 Task 27",
+   "title": "Layered exits and protection-coverage supervisor",
+   "status": "partial",
+   "evidence": "Only the protection-coverage state machine shipped: src/trading_os/execution/protection.py has ProtectionSupervisor with states UNREQUIRED/PENDING_FILL/PENDING_PROTECTION/PROTECTED/DEGRADED/FAILED/CLOSED, PROTECTED only when broker-confirmed stop_quantity covers filled+covered quantity, fences_new_entries on DEGRADED/FAILED, and never guesses a close quantity (on_protection_failed keeps guessed_close_quantity=None) \u2014 matching amendment Task 14. The ENTIRE exits layer and CA monitor are ABSENT: no src/trading_os/execution/exits.py, no protection_policy.py, no corporate_action_monitor.py, no config/exits/paper_v1.yaml; grep for atr|chandelier|trail|time.?stop|regime.?flip in execution/ returns NONE. So there is no ATR-stop-on-fill computation, no ratchet-only trailing stop, no time-stop/regime-flip reduce-only intents, no controlled reduce-only liquidation on protection-deadline expiry, no HALTED_UNVERIFIED escalation, no stateful replace-protection sequence, and no CorporateActionMonitor driving the coverage-deficit machine from an independent CA ledger. The supervisor is also a pure in-memory model with no event store / clock / adapter-capability wiring (check_once/observe from the original are not implemented).",
+   "gap": "ExitManager (ATR stop, chandelier trail, time-stop, regime-flip reduce-only intents), config/exits/paper_v1.yaml, CorporateActionMonitor, controlled-liquidation/HALTED_UNVERIFIED escalation on deadline expiry, stateful replace-protection, and event-store/clock/capability-wired ProtectionSupervisor.check_once."
+  },
+  {
+   "task": "V1 Task 1",
+   "title": "Replace superseded repo baseline; safe paper-mode Settings",
+   "status": "partial",
+   "evidence": "src/trading_os/app/settings.py ships Settings with live-safe defaults, but the shape differs from the original spec. Original scoped RunMode{SIMULATED,PAPER,LIVE} defaulting to PAPER plus live_trading_enabled=False and default_market='india'; shipped instead has Environment{DEVELOPMENT,TEST,PRODUCTION} defaulting to DEVELOPMENT and live_mode_requested=False. Settings live at app/settings.py (live-v1 layout), not config.py at package root. compose/README rewrite goal is met in spirit under deploy/.",
+   "gap": "No RunMode enum (SIMULATED/PAPER/LIVE), no live_trading_enabled flag, no default_market setting, no top-level config.py; renamed to Environment/live_mode_requested under app/settings.py."
+  },
+  {
+   "task": "V1 Task 2",
+   "title": "Immutable IDs, enums, and fixed-point Decimal value objects",
+   "status": "partial",
+   "evidence": "src/trading_os/kernel/ids.py provides IDs as typing.NewType str aliases (AccountId, InstrumentId, SnapshotId, ReleaseId, EventId) NOT frozen Pydantic _Id models with .new()/.parse(); no IntentId/StrategyBookId/PositionEpisodeId. src/trading_os/kernel/values.py has Money(currency:str, minor_units:int) and Quantity(value:Decimal, unit). Money uses INTEGER minor_units, not the mandated StrictDecimal amount + Currency enum, and has no currency-mismatch __add__ guard. No Currency/Market/Direction(LONG/FLAT)/KillState/CoverageState enums in kernel; Direction long-only enum never shipped (long-only is enforced ad hoc in brokers/fake.py).",
+   "gap": "No strict-Decimal Money with Currency enum and currency-mismatch addition; no Direction/Currency/Market/KillState/CoverageState enums; IDs are bare str NewTypes not frozen value objects with new()/parse(); no IntentId type."
+  },
+  {
+   "task": "V1 Task 3",
+   "title": "Enforce D30 slow/hot-path seam (ResearchTradeThesis -> HotPathCandidate)",
+   "status": "partial",
+   "evidence": "The no-number-crosses-the-seam invariant shipped in a reshaped form: src/trading_os/research/seam.py enforces a closed categorical-assessment allowlist + numeric-run rejection + forbidden-token guard (CategoricalSeamViolation) over EvidencePacket assessments. This is a stronger/different enforcement than the planned SeamProjector.project(thesis, symbol)->HotPathCandidate. There is NO ResearchTradeThesis model, NO HotPathCandidate, NO ConvictionBand enum, and NO SeamProjector class; the architecture pivoted from thesis+conviction projection to typed multi-domain EvidencePacket/DecisionFeatureSet (research/models.py). Import-boundary test intent is served by seam.py living in research and being called at the port.",
+   "gap": "ResearchTradeThesis, HotPathCandidate, ConvictionBand, and SeamProjector.project() were never built; conviction-band seam replaced by categorical EvidencePacket seam."
+  },
+  {
+   "task": "V1 Task 4",
+   "title": "Orders, fills, positions, GlobalPortfolioSnapshot, OrderReservation",
+   "status": "partial",
+   "evidence": "src/trading_os/brokers/models.py ships OrderRequest (side, order_type LIMIT/STOP_LIMIT, quantity>0), OrderSide{BUY,SELL}, PositionObservation, CashObservation, OpenOrderObservation, BrokerSnapshotObservation, OrderAck. Long-only is NOT enforced by an OrderRequest model_validator (no reduce_only field); it is enforced downstream in brokers/fake.py submit_order. There is NO OrderStatus enum with OUTCOME_UNKNOWN, no Fill model, no OrderType.STOP. GlobalPortfolioSnapshot was replaced by AccountPortfolioSnapshot (portfolio/snapshot.py) + OwnerPortfolioCut (portfolio/projector.py) per the amendment's account-partitioned model. OrderReservation shipped in execution/reservations.py.",
+   "gap": "No OrderRequest.reduce_only field or enforce_long_only validator; no Fill model, no OrderStatus enum (incl. OUTCOME_UNKNOWN); GlobalPortfolioSnapshot renamed/reshaped to per-account AccountPortfolioSnapshot + OwnerPortfolioCut."
+  },
+  {
+   "task": "V1 Task 5",
+   "title": "Define all 13 D29 typed ports and reusable offline fakes",
+   "status": "partial",
+   "evidence": "No src/trading_os/ports/ package exists (confirmed: NO ports/ package). Only a subset of ports shipped as scattered Protocols: brokers/ports.py (BrokerPort), market_data/ports.py, research/ports.py (per plan), ontology/projections.py projection ports. The planned 13-port roster (ClockPort, CalendarPort, MarketDataPort, FxRatePort, SecurityMasterPort, GraphStorePort, EventStorePort, StateCachePort, BrokerTransportPort, LLMRolePort, SecretsPort, HITLTransportPort, NotifierPort) and the consolidated tests/fakes/ports.py (FrozenClock, InMemoryEventStore, FakeFxRates, FakeGraphStore, FakeHITLTransport, CollectingNotifier, etc.) were not built as a unified boundary. FakeBroker exists (brokers/fake.py). No FX port, secrets port, HITL/notifier port, clock/calendar port.",
+   "gap": "No unified ports/ package or 13-port D29 roster; missing ClockPort, CalendarPort, FxRatePort, SecretsPort, HITLTransportPort, NotifierPort, StateCachePort, GraphStorePort, LLMRolePort as typed Protocols and no consolidated tests/fakes/ports.py."
+  },
+  {
+   "task": "V1 Task 6",
+   "title": "Append-only EventEnvelope + full recovery event catalogue (EventType)",
+   "status": "partial",
+   "evidence": "src/trading_os/kernel/events.py ships EventEnvelope[T] (frozen, generic, event_id/type/payload/recorded_at/valid_at/correlation_id/causation_id/schema_version) and new_event(). Optimistic stream versions are enforced in ledger/store.py (ConcurrencyError). However event_type is a free-form str with dict payloads, NOT a closed EventType StrEnum with a discriminated typed-payload union. The mandated 19-item recovery event catalogue (position_episode_opened, fill_allocated, stop_intent_placed, protection_coverage_changed, trail_ratcheted, order_reservation_committed/released, fx_lot_opened, calibration_recorded, kill_switch_generation_bumped, etc.) does not exist as typed payload models; only ad-hoc strings like 'OrderIntentCreated'/'OrderAcknowledged' are emitted (execution/coordinator.py). In-memory event store (memory_event_store.py) was not built; ledger is Postgres-only.",
+   "gap": "No EventType StrEnum, no discriminated typed payload union, no 19-item recovery event catalogue as models, and no InMemoryEventStore; events are free-form strings + dicts."
+  },
+  {
+   "task": "V1 Task 7",
+   "title": "Persist events atomically in Postgres (PostgresEventStore)",
+   "status": "shipped",
+   "evidence": "src/trading_os/ledger/store.py EventStore.append() enforces expected-version with ConcurrencyError, is idempotent by event_id set, and reads streams ordered by stream_version. src/trading_os/ledger/tables.py EventRow declares event_log with UNIQUE(stream_id, stream_version), JSONB payload, timestamptz fields. Migration present at migrations/versions/0001_event_ledger.py + migrations/env.py. This is the D15 append-only source-of-truth. (Note: uses SQLAlchemy session-level concurrency + unique-idempotency rather than the planned pg_advisory_xact_lock, and read_stream returns EventRow rows not reconstructed discriminated payload models \u2014 functionally equivalent for the atomic append-only guarantee.)",
+   "gap": ""
+  },
+  {
+   "task": "V1 Task 8",
+   "title": "Replayable portfolio projections + disposable Valkey cache",
+   "status": "partial",
+   "evidence": "src/trading_os/ledger/replay.py provides a generic deterministic replay(rows, initial, reducer) fold, satisfying event-fold-to-state. But there is NO PortfolioProjection frozen model with per-EventType total handlers, no apply()/from_state()/apply_all(), no duplicate_event_ids tracking, and no UnsupportedEventSchema fail-closed. ValkeyStateCache was NOT built: 'valkey' appears only in app/settings.py as a URL; no valkey_cache.py, no ValkeyStateCache class, no model_dump_json cache-and-rebuild round-trip. The specific replay-equivalence and disposable-cache guarantees are unproven in shipped code.",
+   "gap": "No PortfolioProjection type with typed per-event handlers/duplicate-event guard, and no ValkeyStateCache (disposable projection cache) \u2014 only a generic replay fold shipped."
+  },
+  {
+   "task": "V1 Task 9",
+   "title": "Kill-switch scopes (GLOBAL/MARKET/SYMBOL) and stale-worker fencing",
+   "status": "partial",
+   "evidence": "src/trading_os/execution/kill_state.py ships KillState (frozen) with KillMode{ACTIVE,ENTRY_DISABLED,REDUCE_ONLY,MANAGEMENT_ONLY,HALTED}, monotonic generation, may_increase_exposure/may_reconcile, and transition() that fences entries on safety reasons before human ack. Stale-generation fencing exists but is enforced elsewhere: policy/live_authority.py checks receipt.kill_generation != kill_generation ('kill_generation_mismatch') and policy/capability.py checks kill_generation_matches ('kill_generation_stale'). However the kill is ACCOUNT-scoped (account_id + generation), NOT the planned GLOBAL/MARKET/SYMBOL scope hierarchy with strictest-state precedence; there is no KillScope, no KillSwitch.assert_submission_allowed(market,symbol,reduce_only,generation), no StaleGeneration/NewExposureBlocked exceptions, and no reduce-only-allowed-under-halt check keyed on market/symbol. The planned kill scopes moved to KillMode account states matching the amendment.",
+   "gap": "No GLOBAL/MARKET/SYMBOL kill scopes with strictest-state precedence, no KillScope/KillSwitch.assert_submission_allowed(), no per-symbol reduce-only carve-out; kill is account-generation-scoped only."
+  },
+  {
+   "task": "V1 Task 10",
+   "title": "Global cash/risk CAS reservations + separate strategy books",
+   "status": "partial",
+   "evidence": "CAS reservations shipped: src/trading_os/execution/reservations.py ReservationStore.reserve() uses UNIQUE(account_id, cas_version) so at most one of two concurrent reservations against the same CAS version commits (ReservationConflict), with idempotent release(). OrderReservation carries account, cas_version, policy_release_ids, cash/quantity/risk minor units. This maps to the amendment's per-account CAS model. However the reservation is a DB-backed store keyed by (account, cas_version), NOT the planned ReservationGate that appends OrderReservationCommitted/Released events to a single global portfolio stream mapping StreamConflict->StaleSnapshot. Crucially, the LLM vs RULE_NULL StrategyBook split and allocate_fill() attribution (StrategyBookKind{LLM,RULE_NULL}) were NOT built \u2014 no strategy_books.py, no per-book fill/cost attribution, no permanent rule-based null book.",
+   "gap": "No StrategyBook/StrategyBookKind{LLM,RULE_NULL} separation, no allocate_fill() per-book cost attribution, no permanent rule-null book; reservation is a CAS DB row keyed by (account,cas_version) rather than event-sourced OrderReservationCommitted/Released with StaleSnapshot."
+  },
+  {
+   "task": "V1 Task 11",
+   "title": "Session and credential readiness gates",
+   "status": "partial",
+   "evidence": "A readiness gate shipped in reshaped form: src/trading_os/app/readiness.py build_readiness_report() aggregates ~13 boolean readiness items (credential_ready, static_ip_ready, data_entitlement_ready, portfolio_complete, reconciled, kill_switch_exercised, etc.) into a hashed ReadinessReport that fails closed on any False. But this is the Day-9 T0 LIVE-LAUNCH readiness manifest, NOT the planned per-cycle SessionReadiness/CredentialReadiness gates. There is NO SessionReadiness.check(market, trade_date) validating a versioned calendar entry / observed session close / after-close / not-ambiguous (grep for SessionReadiness/session_readiness returns nothing), and NO CredentialReadiness.check() performing a single read-only broker probe that maps a Kite 403/TokenException to REDUCING/HALTED without retry (no TokenException/reauth references). No ClockPort/CalendarPort back these. Session/close-time and credential-403 gating logic is absent.",
+   "gap": "No per-cycle SessionReadiness (calendar/close-time fail-closed) and no CredentialReadiness (single Kite-403/TokenException probe -> REDUCING/HALTED, no-retry) gates; only a boolean T0 launch ReadinessReport shipped."
+  },
+  {
+   "task": "V1 Task 12",
+   "title": "Model raw bars, corporate actions, universes, and cash events",
+   "status": "partial",
+   "evidence": "Bars/corporate-action/adjusted models shipped in src/trading_os/market_data/models.py (Bar, CorporateActionObservation, FxMark, AdjustedBar) with raw/adjusted lineage separation, and validated snapshots in src/trading_os/market_data/snapshot.py. But the original scoped much more: (a) no apply_split reciprocal price/volume adjustment function exists (AdjustedBar is just a container referencing corporate_action_ids; grep for apply_split returns nothing outside plan text); (b) no three-series raw/split-adjusted/total-return set (only adjustment_set_id string tags, no total-return series); (c) no UniverseMembership / point-in-time survivorship model (no data/universe.py, membership_as_of absent); (d) no BrokerCashEvent / normalize_cash_event with dividend/withholding/idle-FX components (grep withholding/idle_fx/dividend = 0). The whole src/trading_os/data/ package the task named was never created; a reduced market_data/ shipped instead.",
+   "gap": "Corporate-action split/bonus/dividend application arithmetic; total-return series; point-in-time universe membership with delisting intervals; broker cash-event normalization (dividend/withholding/interest/remittance/cash-in-lieu) with gross/net and idle-FX-lot eligibility."
+  },
+  {
+   "task": "V1 Task 13",
+   "title": "Seal content-addressed validated data snapshots",
+   "status": "partial",
+   "evidence": "A content-addressed ValidatedDataSnapshot with SHA-256 over a sorted-key JSON manifest and a ValidatedDataSnapshotId shipped in src/trading_os/market_data/snapshot.py (build_validated_snapshot), and per-bar cutoff/entitlement validation in src/trading_os/market_data/validator.py. However the original scoped a full CorrectnessLayer.validate_and_seal with a DataFault taxonomy (FUTURE_DATED_COMPONENT etc.), per-factor enabled-signals binding (enabled_signals['quality']), and rejection of stale/missing/non-PIT-universe/unknown-calendar/missing-Rule-115-FX components. Shipped snapshot only rejects individual bars by receipt-after-cutoff / OHLC / entitlement (BarRejection); there is no DataFault kind enum, no enabled_signals map, no calendar/FX/KG/universe component sealing. Hash is over bars only, not the multi-component manifest (raw/adjusted/CA-ledger/universe/calendar/news-cutoff/KG-edges/FX).",
+   "gap": "CorrectnessLayer with typed DataFault taxonomy; multi-component manifest hash (CA ledger, PIT universe, calendar version, news cutoff, KG edge set, FX records); per-factor enabled-signals binding; fail-closed on future-dated/stale/non-PIT/missing-FX components."
+  },
+  {
+   "task": "V1 Task 14",
+   "title": "Deterministic factor signals and the independent rule-null",
+   "status": "deferred",
+   "evidence": "Nothing on main implements the 3-factor null. There is no src/trading_os/signals/ package (ls signals/ = not found). Grep across the whole tree for twelve_minus_one / trend_signal / sma 200 / hmm / hidden markov / regime_state / momentum_lookback / GateRank / RuleNullJob returns zero hits (regime only appears as a diagnosis root-cause string in retrospective/diagnosis.py). The only 'signal' shipped is a single deterministic momentum-acceleration opportunity DETECTOR in src/trading_os/discovery/momentum.py (recent-return + volume-ratio thresholds) used for candidate discovery, not the 12-1 momentum / 200-day trend / 2-state HMM regime factor stack, no config/signals/paper_v1.yaml, no GateRank conviction-ordering, and no separate independent RULE_NULL benchmark job/book.",
+   "gap": "12-minus-1 momentum, 200-day trend, 2-state HMM regime factors with versioned fitted artifact; frozen config/signals/paper_v1.yaml; GateRank conviction admission/ordering with N>=30 veto; independent RuleNullJob (permanent parallel rule-based null benchmark) importing no research/KG/LLM/calibration."
+  },
+  {
+   "task": "V1 Task 15",
+   "title": "Causal-KG edge admission and deterministic confidence (superseded by ontology plan)",
+   "status": "partial",
+   "evidence": "The original task was explicitly superseded by the ontology plan, and only a thin kernel shipped. src/trading_os/ontology/relational.py provides RelationalRetrievalBaseline.evidence_for(instrument_id, data_snapshot_id) as the champion. src/trading_os/ontology/projections.py provides Fuseki(RDF)/Neo4j only as Protocol stubs (GraphProjectionPort) plus an UnavailableProjection no-op that returns degraded=True \u2014 there is NO real Fuseki port and NO real Neo4j write/store (no neo4j_store.py; no bolt driver usage). No EdgeProposal/AdmittedEdge admission policy, no six admission gates (NOT_APPROVED/MISSING_PROVENANCE/INSUFFICIENT_CORROBORATION/AUTHOR_PRECISION/FUTURE_DATED/STALE), no EvidenceConfidence decay table. The ontology-hardening plan itself marks the deeper identity/event/relationship modules (H6-H11) as P1 not-executed.",
+   "gap": "Real Fuseki/RDF and Neo4j projection backends (only stub Protocols + no-op UnavailableProjection exist); EdgeProposal/AdmittedEdge admission policy with the six rejection gates; deterministic EvidenceConfidence with corroboration cap and ~30% annual decay."
+  },
+  {
+   "task": "V1 Task 16",
+   "title": "Deterministic causal traversal and fitted-weight artifacts (superseded)",
+   "status": "deferred",
+   "evidence": "Nothing on main implements causal-KG traversal or exposure vectors. Grep across the tree for traversal / ExposureVector / motif / anti-hub / beta^hops / path_score / EdgeWeightFitter returns zero hits. There is no src/trading_os/kg/ package. The amendment replaced ExposureVector with a tighten-only RiskOverlaySet (multiplier in (0,1] + veto) in src/trading_os/research/models.py, but that is a static agent-emitted overlay object, NOT a deterministic graph traversal computing per-symbol exposure from admitted edges. No config/kg_weight_rungs.yaml, no motif registry, no offline weight-fitting artifact.",
+   "gap": "Deterministic rule-admissible causal traversal (motif registry, depth<=3, conf*structural*beta^hops*gamma^days, inverse-degree anti-hub) producing per-symbol exposure + audited paths; EdgeWeightFitter versioned artifact; frozen weight-rungs config."
+  },
+  {
+   "task": "V1 Task 17",
+   "title": "Swappable LLM roles, analysts, and on-cadence synthesis (superseded)",
+   "status": "partial",
+   "evidence": "A provider-neutral structured LLM seam shipped in src/trading_os/agents/llm.py (StructuredInvocation/StructuredResult/ExpectedLLMFailure, FixtureLLMRole, ALLOWED_CAPABILITY_NAMES), with providers in agents/providers.py and a harness/composition/registry. Typed EvidencePacket / DecisionFeatureSet / RiskOverlaySet crossing a non-executable seam shipped in src/trading_os/research/models.py, and admission (citations/cutoff/categorical enum/prompt-injection) in src/trading_os/research/orchestrator.py. BUT the concrete analyst roster is missing: only a shadow-only CORPORATE_EVENT tracer exists (agents/corporate_events.py, agents/profiles.py). There is NO MacroEventLabel (grep MacroEvent=0), NO NewsMacroAnalyst, NO MoASynthesizer/ResearchTradeThesis synthesis, NO MetaAnalyst->EdgeProposal, NO DecisionCadence may_trade gate (grep cadence=0), and NO provider-quorum/diversity-floor logic. Of the 10 EvidenceDomain enum values only CORPORATE_EVENT and SENTIMENT are referenced anywhere beyond the enum.",
+   "gap": "Concrete analyst roster beyond corporate-event shadow tracer: NewsMacroAnalyst emitting categorical/ordinal MacroEventLabel, MoA synthesizer emitting ResearchTradeThesis with conviction, MetaAnalyst emitting EdgeProposals, provider quorum/diversity-floor, and DecisionCadence separating label-refresh from may-trade."
+  },
+  {
+   "task": "V1 Task 18",
+   "title": "Conviction-blind fixed-fractional sizing",
+   "status": "shipped",
+   "evidence": "src/trading_os/decision/sizing.py implements size_cash_equity(SizingInput)->ProvisionalSize with deterministic integer minor-unit fixed-fractional arithmetic: risk_budget = capital*risk_fraction_ppm//1e6, min of by_risk/by_cash/by_symbol, floored to lot_size, returning quantity+notional+risk. It is conviction-blind (no belief/conviction/thesis/calibration field on SizingInput; docstring and plan Task-12 test 'conviction not in SizingInput.model_fields' enforce it) and honors risk/cash/symbol caps by flooring. This matches the original Task 18 intent. Note: the calibration-store/quarter-Kelly conviction-scaling ceiling mentioned in CLAUDE.md was never wired (no kelly/calibration module anywhere), but the original Task 18 scope was explicitly conviction-blind fixed-fractional only, so this is a faithful ship of Task 18 itself.",
+   "gap": ""
+  },
+  {
+   "task": "V1 Task 19",
+   "title": "INR-numeraire portfolio risk and tighten-only semantic overlays",
+   "status": "partial",
+   "evidence": "src/trading_os/decision/risk.py ships RiskEngine.evaluate with deterministic per-symbol and deployment caps plus a tighten-only overlay (multiplier in (0,1] via RiskOverlaySet from research/models.py, veto short-circuits to 0, shrink never inflates) \u2014 the tighten-only semantic-overlay half of Task 19 is present and correct. BUT the INR-numeraire portfolio-risk half is entirely missing: no covariance.py, no inr_returns FX-converted returns, no historical VaR/CVaR, no drawdown metric, no correlation-cluster cap across both markets+pending orders, no stale-FX rejection. Grep for covariance/inr_returns/numeraire/VaR/CVaR = 0. RiskInput carries only single-symbol/deployment minor-unit caps, not a return matrix or FX records; there is no cross-market common-numeraire risk at all.",
+   "gap": "Common-INR numeraire conversion of US-sleeve returns/exposures via pinned live FX; historical VaR/CVaR at configured confidence; portfolio drawdown; correlation-cluster cap spanning both strategy books and pending orders; stale-FX-record rejection."
+  },
+  {
+   "task": "V1 Task 28",
+   "title": "Build the exposure-aware HITL backend (approval tokens, Telegram + localhost transports, entry-deny/exit-proceed defaults, emergency HALT)",
+   "status": "deferred",
+   "evidence": "No hitl/ package exists in src/trading_os/ (ls of src shows agents,app,brokers,decision,discovery,execution,identity,kernel,ledger,market_data,ontology,policy,portfolio,research,retrospective,tradability). grep -rli 'telegram|hitl|approval' hits only portfolio/authority.py (unrelated). grep for 'notif|telegram|hmac|approval_token|ApprovalRequest' returns nothing. No ApprovalRequest/ApprovalDecision/HITLBackend/token signing, no config/hitl/paper_v1.yaml. The shipped live-v1 plan replaced HITL with immutable LiveAuthorityReceipt + policy releases; no interactive human-approval-per-order backend shipped.",
+   "gap": "The entire exposure-aware human approval loop: signed HMAC approval tokens bound to order-set hash/snapshot/expiry, entry approval with timeout-default-deny, exit veto with timeout-default-proceed, Telegram approve/reject + emergency HALT transport, and a localhost-only re-auth un-HALT transport. Nothing on main implements per-decision HITL."
+  },
+  {
+   "task": "V1 Task 29",
+   "title": "Persist Timescale market data and snapshot-scoped source records (hypertables, feed adapters, SnapshotDataRepository, fundamentals panel)",
+   "status": "partial",
+   "evidence": "src/trading_os/market_data/ has models.py, ports.py, snapshot.py, testing.py, validator.py. snapshot.py exposes only build_validated_snapshot() (in-memory build, no async/session/insert/Repository) and a ValidatedDataSnapshotId hash. grep 'hypertable|timescale|create_hypertable|SnapshotDataRepository|total_return_bars' across market_data/ and ledger/ returns nothing. Only migration is migrations/versions/0001_event_ledger.py (no 20260721_0005_market_data equivalent). No src/trading_os/data/ package at all (no repository.py, no adapters/nse_bse.py|alpaca.py|vetted_news.py, no fundamentals_panel.py). Read-only Kite/Alpaca broker adapters (brokers/kite.py, brokers/alpaca.py) exist but produce portfolio observations, not persisted OHLCV source records.",
+   "gap": "Durable persistence: Timescale raw_bars hypertable, append-only source-record/adjusted-series/CA/universe/news/FX tables, the snapshot-ID-scoped SnapshotDataRepository (total_return_bars etc.), the NSE/BSE + Alpaca + vetted-news feed adapters, and the 45-day-lag fundamentals quality panel. Validated snapshots are built transiently in memory and never stored/queried by snapshot ID from a DB."
+  },
+  {
+   "task": "V1 Task 30",
+   "title": "Immutable FX/accounting ledgers and broker cash-event ingestion (Rule-115, FIFO FX lots, Schedule FA/Form 67 tax reports)",
+   "status": "deferred",
+   "evidence": "No src/trading_os/accounting/ package exists. grep -rli 'rule115|rule_115|schedule fa|journal' returns nothing; grep -rin 'tcs|schedule.fa|form 67|rule.115|journal|debit|credit|fx_lot|idle.fx|fifo' hits only portfolio/models.py CashBuckets (pending_debit_minor/pending_credit_minor fields, unrelated to a double-entry ledger). No fx.py/ledger.py/tax_reports.py, no data/broker_cash_ingestor.py, no 20260721_0006_accounting migration.",
+   "gap": "The entire accounting subsystem: balanced native+INR double-entry journals, immutable TaxFxRateAssigned/LiveFxMarkObserved events, Rule-115 SBI-TT rate assignment, FIFO FX lots, idle-FX lot handling, Schedule FA/Form 67/CG-FSI tax report views, and idempotent broker-cash-event ingestion deduped by broker transaction ID."
+  },
+  {
+   "task": "V1 Task 31",
+   "title": "Add the calibration store without creating a sizing wire (Beta-Bernoulli, N=30 maturity, gate/rank-only view)",
+   "status": "deferred",
+   "evidence": "grep -rli 'calibration|beta.bernoulli|deflated|cpcv|spearman' across src/ returns nothing. No src/trading_os/portfolio/calibration.py, no 20260721_0007_calibration migration, no CalibrationStore/CalibrationRecorded/GateRankCalibrationView. There is no signals/ package either (the shipped decision path uses decision/eligibility.py + decision/sizing.py conviction-blind sizing), so the D9b calibration key and gate/rank read view have no home.",
+   "gap": "The episode-keyed calibration store: (model,prompt_version,conviction_bucket,market,regime) key, idempotent CalibrationRecorded on unique position_episode_id, Beta(1,1) summaries, N=30 maturity, and the demote/veto-only GateRankCalibrationView. Not implemented anywhere on main."
+  },
+  {
+   "task": "V1 Task 32",
+   "title": "Compose the idempotent scheduler and EOD cycle (seven-phase EodCycle.run_market_day, unique job leases, shadow/canary scoping)",
+   "status": "partial",
+   "evidence": "src/trading_os/app/scheduler.py exists but is a data-only SchedulerPlan: a ScheduledJob pydantic model + DEFAULT_JOBS tuple (broad_scan_daily/hourly/15m, shortlist_5m, decision_window, protection_check, reconcile, filing_watcher) and a clocks() helper; register() raises NotImplementedError ('bound at runtime'). grep 'run_market_day|eod_cycle|EodCycle|seven.phase' returns nothing. No control/ package (no scheduler.py/jobs.py/eod_cycle.py under control), no job-lease/idempotency key on (job_kind,market,trade_date,config_hash), no phase-ordered resume, no shadow/canary scope enforcement in an orchestrator. app/container.py has no scheduler/watchdog/eod wiring.",
+   "gap": "The actual orchestration engine: EodCycle.run_market_day with the seven ordered phases (readiness -> ingest/correctness+projection seal -> reasoning+rule-null -> activation/handoff -> deterministic policy/gate/rank/sizing+overlay+risk/compliance -> HITL+revalidation -> execution/protection -> reconciliation/accounting/calibration), unique durable job leases, duplicate-fire suppression, per-phase started/completed/failed events with resume-from-first-incomplete, and SHADOW/canary economic-isolation. Only a static multi-clock job catalogue shipped."
+  },
+  {
+   "task": "V1 Task 33",
+   "title": "Watchdog, structured logging + redaction, notifications, and backup verification (dead-man HALT, systemd units, pg_dump+age backups)",
+   "status": "deferred",
+   "evidence": "grep -rli 'watchdog|dead.man|deadman|backup|redact|redaction|heartbeat' across src/ returns nothing. No src/trading_os/control/watchdog.py, no src/trading_os/observability/ package (no logging.py/redaction.py/secrets.py), no MacOSKeychainSecrets/AgeEncryptedEnvSecrets. No deploy/systemd/*.service|.timer, no scripts/backup_postgres.sh|verify_backup.sh, no config/ops/paper_v1.yaml. No notifier port/implementation anywhere.",
+   "gap": "Dead-man watchdog reading durable heartbeats and HALTing via kill switch with generation fencing; structured JSON logging with correlation/intent/snapshot IDs and SecretStr/secret-pattern redaction; daily reconciliation notifications; keychain/age secrets adapters; systemd service/watchdog/backup units; and pg_dump --format=custom + age-encrypted backups with restore verification. None present."
+  },
+  {
+   "task": "V1 Task 34",
+   "title": "CPCV, Deflated Sharpe, scoreboards, and frozen content-hashed promotion manifests (90-day gate, all-gates-must-pass)",
+   "status": "partial",
+   "evidence": "No src/trading_os/evaluation/ package. grep 'cpcv|deflated|sharpe|spearman|scoreboard|rank.correl|purged|embargo' across src/ returns nothing \u2014 no CPCV, no Deflated Sharpe, no per-book net scoreboard, no content-hashed PromotionManifest, no config/promotion/paper_v1.yaml (no 90-day campaign, DSR>0, max-drawdown, sim-paper tracking-error, cost gates). What DID ship is a different promotion mechanism: policy/models.py PromotionPolicyRelease (tier + required_protected_entries/reconciled_exits + drawdown_ppm bands) and ontology/promotion.py (DecisionFeatureActivation/Deactivation gated on an evaluation_manifest_hash string) plus ontology/challenger.py evaluate_challenger (precision/recall/p95-latency eligibility with epsilon). These are qualitative gates, not the statistical CPCV/DSR/scoreboard promotion scorecard.",
+   "gap": "Purged combinatorial cross-validation with embargo, trial-registry-aware Deflated Sharpe, event-clustered effective sample size, per-strategy-book net-of-cost scoreboard vs NIFTY/SPY, and the strict/frozen content-hashed PromotionManifest with numeric bounds (DSR, drawdown, tracking-error, cost caps, KG rank-correlation, 90-day campaign) sealed to the event log before paper day 1. Only tier-based policy releases and a precision/recall challenger gate exist."
+  },
+  {
+   "task": "V1 Task 35",
+   "title": "Sealed semantic relationship replay and rank-correlation validation (COVID-2020, Russia/Ukraine-2022, no-look-ahead, contamination receipts)",
+   "status": "deferred",
+   "evidence": "grep -rin 'covid|russia|ukraine|semantic_replay|SemanticReplay|LookAhead|historical replay' across src/ returns nothing. No src/trading_os/evaluation/semantic_replay.py, no config/replays/covid_2020.yaml|russia_ukraine_2022.yaml, no tests/fixtures/replays. No Spearman rank-correlation computation anywhere (grep spearman empty).",
+   "gap": "The frozen historical semantic-replay evaluator: as-of-sealed snapshot/receipt-pinned replay definitions, look-ahead rejection (available_at <= event_as_of), byte-reproducible results, LLM knowledge-contamination probing/receipts, Spearman rank correlation + beneficiary/harm ranking net of costs, and the two mandatory COVID/Russia-Ukraine replays as promotion evidence. Nothing implements it."
+  },
+  {
+   "task": "V1 Task 36",
+   "title": "Compose the paper CLI and mechanically guard live mode (build_application, live_blockers registry, doctor/paper-run/promotion-status/guarded live-run)",
+   "status": "partial",
+   "evidence": "app/cli.py exists (argparse) with COMMANDS: readiness, observe, reconcile, replay, run-cycle, activate-policy, entry-disable, reduce-only, halt, issue-live-authority, verify-live-authority. policy/live_authority.py implements LiveAuthorityReceipt + verify_live_authority() (broker/account/interval/policy/kill-gen/commit/schema AND-gate). BUT: no src/trading_os/bootstrap.py build_application composition root, no src/trading_os/live_blockers.py, no config/live_blockers.yaml (so the FEMA/TCS/LTCG/DDPI/static-IP/backup-drill/PAPER_CANARY/PAPER_ACTIVE/LIVE_CANARY blocker registry does not exist), and CLI lacks doctor/paper-run/promotion-status commands. The live guard is a per-order receipt check, not a mechanical multi-blocker registry with canary-binding.",
+   "gap": "The bootstrap.build_application composition root with ordered startup (migrate/replay/reconcile/cache/kill-state/protection/readiness) and the LiveBlockerRegistry.assert_live_allowed over the full legal/operational/canary blocker set (incl. exact activation-binding of PAPER_CANARY->PAPER_ACTIVE->LIVE_CANARY). Live is guarded by a LiveAuthorityReceipt check but not by the mechanical blocker manifest, and the paper-run/doctor/promotion-status CLI surface is missing."
+  },
+  {
+   "task": "V1 Task 37",
+   "title": "Prove the complete paper workflow and publish operator runbooks (e2e paper cycle, crash-recovery matrix, fail-direction matrix, six runbooks)",
+   "status": "partial",
+   "evidence": "docs/runbooks/ contains only day-10-policy-change.md, incidents.md, live-v1.md; docs/operations/ has domain-agent-shadow-runbook.md. The six specified paper-first runbooks (paper-operations, reconciliation, protection-incidents, kite-reauthentication, idle-fx-disposition, live-promotion) are not present as named. live-v1.md is a live-mode operator runbook (services-up, migrate, observe/reconcile, run-cycle, readiness) matching the shipped live-v1 slice, not the paper-first acceptance workflow. No tests/integration/test_e2e_paper_cycle.py / test_crash_recovery_matrix.py / test_fail_direction_matrix.py referencing the exposure_vector seam or 18-boundary crash matrix were found in scope.",
+   "gap": "The paper-first acceptance proof: validated-signal->protected-fill->reconciled-close e2e cycle test, the crash-at-every-boundary (1..18) recovery matrix, the section-6 fail-direction matrix, and the six named paper-operations runbooks (idle-FX disposition, kite-reauth, protection-incidents, reconciliation, paper-operations, live-promotion). Shipped runbooks cover live-v1/incidents/day-10 and a domain-agent shadow runbook instead."
+  },
+  {
+   "task": "Ont Task 1",
+   "title": "Add the ontology toolchain and immutable release builder",
+   "status": "partial",
+   "evidence": "A reduced release builder shipped at src/trading_os/ontology/releases.py (OntologyReleaseBuilder.build \u2192 OntologyRelease with a manifest_hash over canonicalized core.ttl + shapes graphs, requires owl:Ontology + owl:versionIRI). ontology/core.ttl declares the IRI + owl:versionIRI. src/trading_os/ontology/manifest.py adds the H0 module-dependency manifest (build_module_manifest + verify_import_closure over ontology/modules/*.ttl). BUT the original Task-1 scope is largely NOT shipped: NO infra/fuseki/ (no Dockerfile, config.ttl, build-config.ttl \u2014 the whole dir is absent); NO separately-versioned QueryPackRelease/ReasoningPolicyRelease/FeaturePolicyRelease envelopes (releases.py has only a single OntologyRelease with version/version_iri/manifest_hash/schema_valid \u2014 no author/reviewer/approver separation, no separation-of-duties check, no OntologyReleaseId typed value object); NO ontology/policies/ (canonical-iri-scheme, approved-owl-rl, query/reasoning/feature policy JSONs absent); NO compatibility.py (no BreakingReleaseVersion / MAJOR-bump gate over mappings/shapes/inference/IRI-scheme); NO ontology/mappings/ (fibo/prov-o/owl-time/identifiers); NO registry.py with transactional event-store publication (OntologyReleasePublished event + append_in_transaction); NO alembic 20260721_0002_ontology_release migration (only migrations/versions/0001_event_ledger.py exists). Compatibility checking (H0 import-closure) exists but the SemVer-breaking-change gate does not.",
+   "gap": "Fuseki Docker infra; author/reviewer/approver release envelope + separation-of-duties enforcement; QueryPack/ReasoningPolicy/FeaturePolicy release types; compatibility.py breaking-change/MAJOR-bump gate; ontology/policies + ontology/mappings artifacts; transactional OntologyReleaseRegistry with event-store publication; ontology_release Alembic migration + UPDATE/DELETE-reject trigger."
+  },
+  {
+   "task": "Ont Task 2",
+   "title": "Model identity, availability time, evidence, and epistemic state (Python models)",
+   "status": "deferred",
+   "evidence": "No src/trading_os/semantic/ tree exists at all. Grep for CanonicalIriEncoder, TickerAlias, AvailabilityWindow, LicencePolicy, IdentityCrosswalk, TemporalAlias across src/ returns zero hits. There are NO Python typed identity value objects (LegalEntityId/IssuerRoleId/SecurityId/ListingId/VenueId/TickerAliasId), NO CanonicalIdentityKey/ListingIdentity, NO validating CanonicalIriEncoder, NO AvailabilityState/AvailabilityWindow, NO Python SourceRecord/EvidenceSpan/Observation/Claim/AdmissionState/AdmissionDecision, NO LicencePolicy/PermittedTransformation. The identity/time/evidence concepts exist ONLY as RDF vocabulary declarations (ontology/modules/identity.ttl, time.ttl, evidence.ttl \u2014 classes/properties with rdfs:label only, no SHACL cardinality on most, no Python enforcement). src/trading_os/identity/models.py is a different thing: the live-V1 account-authority model (LegalParty/UserProfile/BrokerageAccount/AccountAccessGrant/TradingMandate), not the semantic identity/crosswalk/alias resolution model this task scoped.",
+   "gap": "The entire Python semantic-models layer: typed entity IDs, CanonicalIriEncoder (IRI-injection guard), temporal/venue-scoped alias resolution (candidates-not-merge), AvailabilityWindow with ordered publication/receipt/record validation, and typed-Decimal Observation/Claim/AdmissionDecision/LicencePolicy models."
+  },
+  {
+   "task": "Ont Task 3",
+   "title": "Persist immutable sources and the append-only evidence ledger",
+   "status": "deferred",
+   "evidence": "Nothing on main implements it. Grep for EvidenceLedger, append_claim, SourceBlobPort, origin_cluster, append_admission, claims_as_of across src/ returns zero hits. There is NO src/trading_os/ports/source_blob.py or ports/evidence_ledger.py, NO src/trading_os/semantic/evidence/{blob_store,licensed_reader,ledger}.py, NO content-addressed FileSourceBlobStore, NO LicensedSourceReader licence enforcement, NO PostgresEvidenceLedger with claims_as_of/admitted_claims_as_of/origin_clusters_for_claim, NO 20260721_0003_semantic_evidence migration (only 0001_event_ledger.py exists) and therefore no insert-only source_record/observation/claim/admission tables or UPDATE/DELETE-reject triggers. The generic append-only event ledger at src/trading_os/ledger/store.py is the live-V1 event store, not the evidence/source/claim ledger this task scoped.",
+   "gap": "Content-addressed source blob store; licence-policy-enforcing reader; append-only Postgres evidence ledger (claims/admissions/source-origin clusters) with as-of queries and immutability triggers; the semantic_evidence Alembic migration."
+  },
+  {
+   "task": "Ont Task 4",
+   "title": "Build the permanent relational retrieval champion",
+   "status": "partial",
+   "evidence": "A relational champion shipped but heavily reduced. src/trading_os/ontology/relational.py: RelationalRetrievalBaseline.evidence_for(instrument_id, data_snapshot_id) filters an in-memory list of research.EvidencePacket \u2014 no graph/LLM deps (satisfies the independence invariant). src/trading_os/ontology/competency.py (H12) extends it with a versioned CompetencyQueryPack (5 queries incl. identity-disambiguation, contradictions, corrections, portfolio-completeness) and run_evidence_for adds cutoff-exclusion (p.as_of <= cutoff). BUT the original Task-4 contract is not met: NO typed CompetencyQuestion binding ValidatedDataSnapshotId/semantic_snapshot/ontology_release/decision_cutoff/maximum_depth/allowed_predicates; NO EvidenceAnswer with AnswerStatus (ANSWERED/CONTESTED/UNKNOWN), missingness, contradiction_ids, EvidencePath, or a sealed retrieval receipt; NO bounded 1-/2-hop relational path traversal over admitted claims (bounded_relational_paths/answer_from_paths absent); the champion reads EvidencePackets, not the admitted-claim ledger from Task 3 (which does not exist). ontology/queries/competency/identity-exposure.yaml and tests/fixtures/semantic/competency_cases.json were not created. It is a functioning but shallow champion, not the depth-bounded typed-answer retriever scoped.",
+   "gap": "Typed CompetencyQuestion/EvidenceAnswer with answer status + missingness + contradictions + paths + sealed retrieval receipt; bounded 1-/2-hop graph-motif traversal over admitted claims; binding to the (non-existent) evidence ledger rather than an EvidencePacket list."
+  },
+  {
+   "task": "Ont Task 5",
+   "title": "Implement the Fuseki semantic graph port and RDF projection",
+   "status": "deferred",
+   "evidence": "No real Fuseki port or RDF projection shipped \u2014 only a projection PORT STUB. src/trading_os/ontology/projections.py defines Pydantic SemanticContentManifest (with snapshot_id() hash), SemanticProjectionReceipt, a GraphProjectionPort Protocol, and an UnavailableProjection that returns degraded=True. There is NO src/trading_os/ports/semantic_graph.py, NO src/trading_os/semantic/projections/{rdf,rdf_mapping,fingerprint}.py, NO claim_to_quads mapping (no PROV-O derivation triples, no assertion-id/subject/predicate/object/received-at quad emission), NO projection_fingerprint function, NO FusekiBuildClient / FusekiSemanticGraph (no httpx SPARQL SELECT client, no Graph Store PUT build client), NO read-only-vs-build credential split, and no Fuseki container to talk to (infra/fuseki/ absent). rdflib is used only for hashing ontology docs in releases.py/manifest.py, not for projecting admitted assertions into a named graph. This is a placeholder contract, not a working RDF projection.",
+   "gap": "Real RDF projection: claim\u2192quad mapping with PROV-O provenance + time predicates, deterministic canonical N-Triples + graph-IRI content hash, a build-only Graph Store client, a read-only SPARQL SELECT FusekiSemanticGraph exposing assertion-id/fingerprint reads, and the SemanticGraphPort protocol."
+  },
+  {
+   "task": "Ont Task 6",
+   "title": "Generalize Neo4j into the bounded operational projection",
+   "status": "deferred",
+   "evidence": "Nothing implements a Neo4j projection. There is NO src/trading_os/semantic/projections/neo4j.py, NO Neo4jProjectionBuilder, NO ProjectionRelationship/ProjectionClaim/map_relationship (typed source/target enforcement), NO Neo4jSemanticGraph with assertion_ids/projection_fingerprints, NO uniqueness constraints, and NO runtime-write-denial. src/trading_os/ports/graph.py does not exist. The neo4j driver is listed in the plan's deps but no code imports or uses it. The only 'projection' abstraction shipped is the generic GraphProjectionPort Protocol + UnavailableProjection stub in ontology/projections.py, which is store-agnostic and does no Neo4j mapping, node/relationship building, or motif reads.",
+   "gap": "Entire Neo4j operational projection: typed relationship mapper, bulk MERGE builder stamping snapshot_id/release/validity/provenance, uniqueness constraints, bounded motif reader, offline-builder-vs-runtime-reader credential split, and the graph port."
+  },
+  {
+   "task": "Ont Task 7",
+   "title": "Seal SemanticSnapshots and prove projection equivalence",
+   "status": "partial",
+   "evidence": "Only the data-shape scaffolding and a store-agnostic parity helper shipped; the actual sealing/equivalence gate did not. src/trading_os/ontology/projections.py: SemanticContentManifest.snapshot_id() computes SHA256 over (ontology_release_hash + sorted admitted_assertion_ids + inference_policy_id + decision_cutoff + build_version) \u2014 a real content-addressed final ID \u2014 and SemanticProjectionReceipt carries semantic_snapshot_id + projected_hash + degraded. src/trading_os/ontology/challenger.py::resolve_projection_answer (H13) compares relational vs rdf vs neo4j answer tuples and degrades to the relational champion on disagreement (a parity check, not a build-time fingerprint-equivalence seal). BUT there is NO src/trading_os/semantic/models/snapshot.py, NO SemanticSnapshotBuilder that reads admitted claims, drives both projection builders with the final ID, and compares assertion/fingerprint/entailment sets before appending a receipt (grep for SemanticSnapshotBuilder/ProjectionMismatch/require_queryable/projection_fingerprint \u2192 zero hits); NO snapshot registry gating queryability on a sealed receipt (require_queryable absent); NO integration equivalence test; and since Tasks 5/6 shipped no real projections, there is nothing to prove equivalent. src/trading_os/data/snapshot.py (to be modified) does not exist; market_data/snapshot.py builds a ValidatedDataSnapshot, unrelated to semantic sealing.",
+   "gap": "The build-time equivalence gate: SemanticSnapshotBuilder that seals a SemanticProjectionReceipt only after Postgres/RDF/Neo4j assertion+fingerprint+entailment fingerprints match, and a registry that refuses to serve an unsealed/mismatched snapshot (require_queryable / ProjectionMismatch fail-closed)."
+  },
+  {
+   "task": "Ont Task 8",
+   "title": "Resolve identity candidates and admit claims safely",
+   "status": "deferred",
+   "evidence": "No src/trading_os/semantic/ package exists at all. Grep for IdentityResolver/IdentityCandidate/AdmissionPolicy/admission across src returns zero matches. There is no src/trading_os/semantic/evidence/identity_resolver.py or admission.py, no config/semantic/admission.yaml, and no tests/unit/semantic/test_identity_resolution.py or test_claim_admission.py. src/trading_os/identity/models.py ships only account-authority types (LegalParty, BrokerageAccount, AccountAccessGrant, TradingMandate) \u2014 NOT the typed SecurityId/ListingId/TickerAliasId crosswalk/temporal-alias identity graph the task requires. The only 'admission' code is research/orchestrator.py::admit_packet, which validates an EvidencePacket's instrument/domain/cutoff/citation-scope and the categorical seam \u2014 it is packet admission, not the claim-admission policy (no independent-source-count from origin clusters, no author-precision bar, no freshness/contradiction/human-review gate, no AdmissionState machine). Identity resolution (exact->crosswalk->alias->fuzzy-candidate, no-auto-merge) is entirely absent; the only related code is ontology/instance_validation.py::detects_false_identity_merge, a boolean predicate, plus an unimplemented ontology/modules/identity.ttl vocabulary.",
+   "gap": "No IdentityResolver (authoritative-first resolution with candidate-only fuzzy, no auto-merge), no typed identity/crosswalk/temporal-alias persistence, and no AdmissionPolicy (origin-cluster independent-source counting, cutoff/provenance/shape/author-precision/freshness/contradiction/human gates producing ADMITTED/CONTESTED/REJECTED AdmissionDecisions). No append-only claim/admission ledger tables (only migration is 0001_event_ledger.py)."
+  },
+  {
+   "task": "Ont Task 9",
+   "title": "Add reviewed query templates and typed execution",
+   "status": "partial",
+   "evidence": "No query_registry.py / query_service.py, no QueryTemplateRegistry, no EvidenceQuery, no immutable RetrievalReceipt, no SemanticQueryBinding cache-key over (data snapshot, semantic snapshot, projection receipt, ontology release, query-pack release, cutoff), and no closed SemanticQueryError taxonomy \u2014 grep for all of these returns zero matches in src. No ontology/queries/decision/*.sparql|*.cypher templates. What shipped instead is a much reduced relational-only competency pack: src/trading_os/ontology/competency.py defines CompetencyQuery/CompetencyQueryPack with hardcoded query IDs (evidence.for_instrument, identity.disambiguation, events.contradictions, provenance.corrections, portfolio.completeness), a p95 latency budget, required test-case kinds, and run_evidence_for() with cutoff exclusion. It is answered only by the in-memory relational champion (ontology/relational.py::RelationalRetrievalBaseline); there is no hash-verified template manifest, no typed parameter binding/depth cap, no SPARQL/Cypher execution, and no per-request receipt.",
+   "gap": "Missing: hash-verified reviewed query-template manifest with typed parameter binding + depth cap; three-projection (relational/RDF/Neo4j) execution; immutable RetrievalReceipt bound to the full snapshot/release/cutoff context as a cache key; and the closed semantic-error taxonomy with declared template-to-template relational fallback. Only the relational competency-pack skeleton (no receipts, no binding) shipped."
+  },
+  {
+   "task": "Ont Task 10",
+   "title": "Build technical and fundamental EvidencePackets",
+   "status": "partial",
+   "evidence": "No src/trading_os/semantic/packets/ package; no technical.py/fundamental.py builders, no TechnicalPacketBuilder/FundamentalPacketBuilder, no PacketContext/EvidencePacketContent seal(), no deterministic feature engine, no split-adjusted-series or post-cutoff-restatement lineage handling (grep for PacketBuilder returns zero matches). The shipped EvidencePacket (src/trading_os/research/models.py) is a single flat frozen model with a domain: EvidenceDomain enum, string assessment, support/contradictions/missing tuples, and eligibility_effect \u2014 it carries no typed Decimal deterministic_features, no supporting/refuting observation-vs-assertion split, no freshness_band, and no lineage dict. The EvidenceDomain enum lists TECHNICAL and FUNDAMENTAL, but no code builds packets for them: only agents/corporate_events.py builds a (corporate_event) draft via an LLM judge + coverage reconcile.",
+   "gap": "The EvidencePacket type and TECHNICAL/FUNDAMENTAL enum members exist, but no deterministic TechnicalPacketBuilder or FundamentalPacketBuilder, no typed Decimal feature vectors, no series/adjustment or filing/restatement/point-in-time lineage, and no content-addressed packet sealing. Technical and fundamental domains have no packet-construction code beyond the enum."
+  },
+  {
+   "task": "Ont Task 11",
+   "title": "Build sentiment, macro, relationship, and portfolio EvidencePackets",
+   "status": "partial",
+   "evidence": "No sentiment.py/macro.py/relationships.py/portfolio.py builder modules and no SentimentPacketBuilder/MacroPacketBuilder/RelationshipPacketBuilder/PortfolioPacketBuilder (grep zero matches); no tests/unit/semantic/test_*_packet.py. The EvidenceDomain enum in research/models.py names SENTIMENT, MACRO, ECONOMIC_RELATIONSHIP, and PORTFOLIO, and research/orchestrator.py::admit_packet enforces one sentiment-specific rule ('uncorroborated sentiment must be risk_only' when 'primary_corroboration' in missing). But there is no builder for any of the four: no origin-cluster syndication dedup + independent_origin_count, no macro release-vintage/consensus/surprise/shock-taxonomy, no approved-motif-only causal-relationship path admission (the causal-KG traversal the CLAUDE.md describes is absent), and no internal-portfolio-namespace context builder. Only the corporate_event domain has real handler code.",
+   "gap": "Four bounded domain builders are missing entirely. Sentiment has only a single admission guard (risk-only rule) but no packet builder; macro, economic-relationship (incl. approved-motif causal-KG traversal), and portfolio-context domains have no code beyond the enum member."
+  },
+  {
+   "task": "Ont Task 12",
+   "title": "Build InstrumentBeliefState and the deterministic feature seam",
+   "status": "partial",
+   "evidence": "No src/trading_os/semantic/models/belief.py, no InstrumentBeliefState, InstrumentHypothesis, HypothesisAssessment, BeliefStateBuilder, HypothesisSupportRuleRelease/support_rules.py, DecisionFeatureProjector, RiskOverlayProjector, or DeterministicStrategyPolicy/HotPathCandidate \u2014 grep for every one of these returns zero matches in src. There is no belief aggregation, no versioned support-rule evaluation producing SUPPORTED/CONTESTED/INSUFFICIENT/INAPPLICABLE, and no allowlisting projector from beliefs to numeric decision features. What shipped is the seam INVARIANT (not the belief pipeline): research/seam.py enforces a closed categorical-assessment allowlist + executable-number rejection at the packet boundary, and research/models.py has a flat DecisionFeatureSet (categorical_features dict, evidence_packet_ids, activation_release_id) and a tighten-only RiskOverlaySet (multiplier in (0,1], veto, reason_codes). The deterministic hot path (decision/sizing.py::size_cash_equity, decision/eligibility.py) is conviction-blind and integer-only, satisfying 'no number crosses the seam,' but it consumes tradability/portfolio-gate inputs directly, not a projected DecisionFeatureSet from an InstrumentBeliefState.",
+   "gap": "Missing: InstrumentBeliefState + InstrumentHypothesis/HypothesisAssessment, the versioned HypothesisSupportRule evaluator (packet-presence-is-not-support), BeliefStateBuilder with snapshot-binding checks, the allowlisting DecisionFeatureProjector, RiskOverlayProjector, and the DeterministicStrategyPolicy adapter to HotPathCandidate. Only the seam-guard invariant and flat DecisionFeatureSet/RiskOverlaySet value objects shipped; nothing builds or consumes a belief state."
+  },
+  {
+   "task": "Ont Task 13",
+   "title": "Compare relational, RDF, and Neo4j reasoning paths",
+   "status": "partial",
+   "evidence": "No src/trading_os/semantic/evaluation/ package; no ReasoningMetrics/DifferentialEvaluation/ReasoningPromotionGate/EvaluationManifest, no knowledge_contamination probes (retrieval/no-retrieval/masked), no config/semantic/reasoning_promotion.yaml, no multiplicity correction / Deflated-Sharpe / CPCV, and no model knowledge-cutoff metadata sealing (grep CPCV/deflated/contamination/multiplicity = zero). What shipped is the reduced ontology-hardening H13 stub, src/trading_os/ontology/challenger.py: ChampionScore/ChallengerScore (precision/recall/p95 + new_cutoff_leaks + new_false_merges + out_of_sample_improvement) and evaluate_challenger() with a simple eligibility gate (recall>=champion, precision>=champion-epsilon, zero new leaks, zero new false-merges, >0 OOS improvement), plus resolve_projection_answer() that degrades RDF/Neo4j disagreements to the relational champion. This is a single-metric-epsilon gate, not the pre-registered primary-metric/minimum-effect/familywise-alpha/Holm-correction/fixed-retirement-horizon differential evaluator with contamination exclusion the task specifies. The RDF/Neo4j 'paths' being compared are only tuple inputs \u2014 there are no real graph projections to compare against (see Task 15 note on projections.py stubs).",
+   "gap": "Missing: full ReasoningMetrics roster (factual precision/recall, source entailment, citation correctness, abstention, latency, cost), pre-registered promotion policy with minimum material effect + Holm multiplicity correction + fixed retirement horizon + budget gates, historical-LLM retrieval/no-retrieval/masked contamination probes with sealed knowledge-cutoff metadata, and CPCV/Deflated-Sharpe. Only a single-epsilon safety+OOS eligibility stub and a degrade-to-champion tuple comparator shipped."
+  },
+  {
+   "task": "Ont Task 14",
+   "title": "Implement the governed agentic improvement and promotion loop",
+   "status": "partial",
+   "evidence": "No src/trading_os/semantic/improvement/ package; no FailureCase/RootCauseClass/Diagnosis/ChangeProposal/ExperimentManifest/ExperimentOutcome/RemediationBudget/ImprovementCoordinator, no role separation ports, no PromotionAuthority self-approval gate, no CanaryManifest/CanaryReceipt, and NO SHADOW->PAPER_CANARY->PAPER_ACTIVE->LIVE_CANARY->LIVE_ACTIVE activation state machine \u2014 grep for ImprovementCoordinator/RootCauseClass/canary returns zero matches. No alembic 20260721_0004_semantic_improvement migration (only 0001_event_ledger.py). What shipped is the ontology-hardening H14 stub, src/trading_os/ontology/promotion.py: a flat DecisionFeatureActivation (activation_id, feature_id, evaluation_manifest_hash, approved_by, effective_from, cooldown_days), DecisionFeatureDeactivation, activate_feature() (requires eligible ChallengerVerdict + non-empty manifest hash + cooldown window), and should_auto_demote() on any protected-safety-metric regression. There is no offline improvement/diagnosis loop, no closed RootCauseClass, no author!=approver / high-risk-always-human authority, no remediation budget, and no multi-mode canary \u2014 activation is a single one-shot flag with a cooldown, and demotion is a boolean helper.",
+   "gap": "Missing: the entire offline improvement loop (FailureCase->Diagnosis->ChangeProposal->Experiment->EvaluatedProposal with role separation and remediation budget), PromotionAuthority (self-approval-forbidden, HIGH/MEDIUM always human), and the immutable multi-stage DecisionFeatureActivation canary state machine (SHADOW/PAPER_CANARY/PAPER_ACTIVE/LIVE_CANARY/LIVE_ACTIVE) with cap-breach/rollback receipts and its insert-only tables. Only a single-flag activation+cooldown and a boolean auto-demote helper shipped."
+  },
+  {
+   "task": "Ont Task 15",
+   "title": "Compose the reasoning cycle and prove end-to-end fallback",
+   "status": "deferred",
+   "evidence": "No src/trading_os/semantic/cycle.py, bootstrap.py, or handoff.py; no ReasoningCycle, ReasoningCycleRequest, SemanticDecisionHandoff, ActivatedDecisionInputs, SemanticBootstrap, or config/semantic/runtime.yaml (grep ReasoningCycle/SemanticDecisionHandoff = zero matches), and no tests/integration/semantic/test_reasoning_cycle|fallback|baseline_failure|crash_recovery. The end-to-end composition that loads snapshots, runs approved queries, builds all six packets, constructs a belief state, seals an audit event, and prepares an ActivatedDecisionInputs envelope (with SHADOW returning empty economic inputs) does not exist. The Fuseki/Neo4j projections it would fall back from are themselves only stubs: src/trading_os/ontology/projections.py defines SemanticContentManifest.snapshot_id() (a SHA256 over release-hash+assertion-ids+cutoff), a GraphProjectionPort Protocol, and UnavailableProjection (returns degraded=True without building anything) \u2014 there is NO real Fuseki port/RDF projection builder and NO Neo4j adapter. The permanent relational champion (ontology/relational.py + competency.py) does exist as the always-available baseline, but there is no cycle that orchestrates the semantic->relational degrade path or the sealed-snapshot idempotent replay.",
+   "gap": "Missing entirely: ReasoningCycle end-to-end composition (snapshot load -> governed queries -> six packets -> belief state -> sealed audit -> idempotent replay), SemanticDecisionHandoff/ActivatedDecisionInputs with SHADOW=no-economic-inputs, SemanticBootstrap version gate, and the governed semantic->relational fallback proof. The relational champion exists standalone but is not composed into any reasoning cycle, and the RDF/Neo4j projections it would degrade from are non-functional stubs."
+  }
+ ]
+}
