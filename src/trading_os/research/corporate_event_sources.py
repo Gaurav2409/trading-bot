@@ -46,40 +46,6 @@ class _NormalizedRecord(BaseModel, frozen=True):
     content: str
 
 
-class RecordedCorporateEventAdapter:
-    """Base adapter: read recorded bytes, normalize, and seal a record."""
-
-    channel: ClassVar[str]
-
-    def capture(self, path: Path, received_at: datetime) -> SourceRecord:
-        raw = path.read_bytes()
-        try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise RecordedSourceError(f"invalid recorded JSON: {exc}") from exc
-        if not isinstance(payload, dict):
-            raise RecordedSourceError("recorded payload must be a JSON object")
-        normalized = self._normalize(payload)
-        digest = sha256(raw).hexdigest()
-        return SourceRecord(
-            record_id=normalized.record_id,
-            source_id=normalized.source_id,
-            source_family_id=normalized.source_family_id,
-            channel=self.channel,
-            jurisdiction=normalized.jurisdiction,
-            published_at=normalized.published_at,
-            available_at=normalized.available_at,
-            received_at=received_at,
-            kind=normalized.kind,
-            is_issuer_submission=True,
-            payload_hash=f"sha256:{digest}",
-            content=normalized.content,
-        )
-
-    def _normalize(self, payload: dict[str, object]) -> _NormalizedRecord:
-        raise NotImplementedError
-
-
 def _require_str(payload: dict[str, object], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -101,6 +67,93 @@ def _require_time(payload: dict[str, object], key: str) -> datetime:
 def _issuer_family(issuer_id: str, category: str, event_date: str) -> str:
     normalized_category = category.strip().lower().replace(" ", "_")
     return f"{issuer_id}:{normalized_category}:{event_date}"
+
+
+def normalize_nse_fields(payload: dict[str, object]) -> _NormalizedRecord:
+    announcement_id = _require_str(payload, "announcementId")
+    issuer_id = _require_str(payload, "issuerId")
+    category = _require_str(payload, "category")
+    dissem = _require_time(payload, "dissemDateTime")
+    event_date = _require_str(payload, "eventDate")
+    content = _require_str(payload, "attachmentText")
+    return _NormalizedRecord(
+        record_id=f"nse:{announcement_id}",
+        source_id="source:nse-announcements",
+        source_family_id=_issuer_family(issuer_id, category, event_date),
+        jurisdiction="IN",
+        published_at=dissem,
+        available_at=dissem,
+        kind=category,
+        content=content,
+    )
+
+
+def normalize_bse_fields(payload: dict[str, object]) -> _NormalizedRecord:
+    news_id = _require_str(payload, "newsId")
+    issuer_id = _require_str(payload, "issuerId")
+    category = _require_str(payload, "category")
+    dissem = _require_time(payload, "dissemDateTime")
+    event_date = _require_str(payload, "eventDate")
+    content = _require_str(payload, "attachmentText")
+    return _NormalizedRecord(
+        record_id=f"bse:{news_id}",
+        source_id="source:bse-announcements",
+        source_family_id=_issuer_family(issuer_id, category, event_date),
+        jurisdiction="IN",
+        published_at=dissem,
+        available_at=dissem,
+        kind=category,
+        content=content,
+    )
+
+
+def seal_record(
+    normalized: _NormalizedRecord,
+    *,
+    channel: str,
+    received_at: datetime,
+    payload_hash: str,
+) -> SourceRecord:
+    return SourceRecord(
+        record_id=normalized.record_id,
+        source_id=normalized.source_id,
+        source_family_id=normalized.source_family_id,
+        channel=channel,
+        jurisdiction=normalized.jurisdiction,
+        published_at=normalized.published_at,
+        available_at=normalized.available_at,
+        received_at=received_at,
+        kind=normalized.kind,
+        is_issuer_submission=True,
+        payload_hash=payload_hash,
+        content=normalized.content,
+    )
+
+
+class RecordedCorporateEventAdapter:
+    """Base adapter: read recorded bytes, normalize, and seal a record."""
+
+    channel: ClassVar[str]
+
+    def capture(self, path: Path, received_at: datetime) -> SourceRecord:
+        raw = path.read_bytes()
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise RecordedSourceError(f"invalid recorded JSON: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise RecordedSourceError("recorded payload must be a JSON object")
+        normalized = self._normalize(payload)
+        digest = sha256(raw).hexdigest()
+        return seal_record(
+            normalized,
+            channel=self.channel,
+            received_at=received_at,
+            payload_hash=f"sha256:{digest}",
+        )
+
+    def _normalize(self, payload: dict[str, object]) -> _NormalizedRecord:
+        raise NotImplementedError
 
 
 class RecordedSec8KAdapter(RecordedCorporateEventAdapter):
@@ -128,41 +181,11 @@ class RecordedNseAnnouncementAdapter(RecordedCorporateEventAdapter):
     channel = "nse"
 
     def _normalize(self, payload: dict[str, object]) -> _NormalizedRecord:
-        announcement_id = _require_str(payload, "announcementId")
-        issuer_id = _require_str(payload, "issuerId")
-        category = _require_str(payload, "category")
-        dissem = _require_time(payload, "dissemDateTime")
-        event_date = _require_str(payload, "eventDate")
-        content = _require_str(payload, "attachmentText")
-        return _NormalizedRecord(
-            record_id=f"nse:{announcement_id}",
-            source_id="source:nse-announcements",
-            source_family_id=_issuer_family(issuer_id, category, event_date),
-            jurisdiction="IN",
-            published_at=dissem,
-            available_at=dissem,
-            kind=category,
-            content=content,
-        )
+        return normalize_nse_fields(payload)
 
 
 class RecordedBseAnnouncementAdapter(RecordedCorporateEventAdapter):
     channel = "bse"
 
     def _normalize(self, payload: dict[str, object]) -> _NormalizedRecord:
-        news_id = _require_str(payload, "newsId")
-        issuer_id = _require_str(payload, "issuerId")
-        category = _require_str(payload, "category")
-        dissem = _require_time(payload, "dissemDateTime")
-        event_date = _require_str(payload, "eventDate")
-        content = _require_str(payload, "attachmentText")
-        return _NormalizedRecord(
-            record_id=f"bse:{news_id}",
-            source_id="source:bse-announcements",
-            source_family_id=_issuer_family(issuer_id, category, event_date),
-            jurisdiction="IN",
-            published_at=dissem,
-            available_at=dissem,
-            kind=category,
-            content=content,
-        )
+        return normalize_bse_fields(payload)
