@@ -75,3 +75,13 @@ async def test_malformed_feed_is_omitted_not_fabricated() -> None:
     result = await watcher.poll(since=SINCE)
     assert result.new_records == ()
     assert result.omitted_channels == ("nse",)
+
+
+async def test_non_list_payload_is_omitted() -> None:
+    fetcher = FixtureSourceFetcher(
+        {"nse/latest": RawFetchResult(endpoint="nse/latest", status=200, fetched_at=NOW, payload='{"key": "val"}')}
+    )
+    watcher = LiveSourceWatcher(fetcher, CHANNELS, InMemorySeenRecordStore(), clock=_clock)
+    result = await watcher.poll(since=SINCE)
+    assert result.new_records == ()
+    assert result.omitted_channels == ("nse",)
