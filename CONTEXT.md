@@ -74,6 +74,18 @@ _Avoid_: User, portfolio, household
 A scoped credential and session relationship that may access only explicitly authorized Brokerage Accounts and operations.
 _Avoid_: Broker, account owner
 
+**Intent ID**:
+The stable OS-owned identity assigned to an account-scoped order intention before any broker side effect and retained across retries and reconciliation.
+_Avoid_: Broker order ID, client request ID
+
+**Position Episode**:
+One Brokerage Account- and Security-scoped exposure lifecycle from its opening fill allocation through final closure, preserving protection and strategy attribution.
+_Avoid_: Position snapshot, household position, trade signal
+
+**Operational Event Schema**:
+The immutable versioned payload contract for one kind of operational fact, identified semantically as `<event_type>.v<n>` independently of event time and stream position.
+_Avoid_: Deployment version, event timestamp, stream version
+
 **Account Access Grant**:
 A revocable, time-bounded authority to read or operate a Brokerage Account within a precisely stated scope.
 _Avoid_: Household membership, role
@@ -97,6 +109,14 @@ _Avoid_: Household account, pooled portfolio
 **Capital Envelope Release**:
 An immutable, effective-dated statement of the capital and cumulative loss authorized for a Brokerage Account or sleeve.
 _Avoid_: Balance, buying power
+
+**Account Kill State**:
+The current account-scoped operational posture bound to a monotonically increasing generation that fences stale workers and governs exposure-increasing activity.
+_Avoid_: Global kill flag, process-local switch
+
+**Protection Coverage State**:
+The broker-confirmed lifecycle classification of whether an account-scoped filled quantity has the required protective order coverage.
+_Avoid_: Source coverage, portfolio completeness
 
 ## Capability and policy
 

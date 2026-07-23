@@ -1,86 +1,71 @@
-# Trading Bot — Agent Instructions
+# Trading OS — Repository Guide
 
-Intelligent multi-market equity trading bot for Indian (NSE/BSE), US (NYSE/NASDAQ), and European (XETRA) markets.
+## Repository map
 
-## Repository Map
-
-```
-docs/                       # Research, design docs, ADRs
-  trading-bot-research.md   # Master MoA research document (2639 lines) — source of truth
-src/
-  agents/                   # LangGraph agent nodes (12-agent roster)
-  brokers/                  # Broker MCP adapters (Zerodha, IBKR, Angel One)
-  data/                     # Market data feed connectors (Polygon.io, Alpaca, Kite, MDS)
-  risk/                     # Risk management (Kelly criterion, VaR, circuit breakers)
-  execution/                # Order management and routing
-  utils/                    # Shared utilities
+```text
+CONTEXT.md                         Canonical project glossary
+docs/
+  README.md                        Documentation map and reading order
+  V1-LEDGER.md                     Canonical V1 scope, status, and workstreams
+  audit/v1-ledger-tasks.json       Machine-readable task status
+  adr/                             Accepted architecture decisions
+  superpowers/specs/               Approved subsystem designs
+  superpowers/plans/               Current plans and superseded references
+  research/                        Evidence and design research
+src/trading_os/
+  agents/                          Governed domain-agent harness
+  app/                             Configuration, composition, scheduling, API/CLI
+  brokers/                         Normalized broker models and adapters
+  decision/                        Deterministic eligibility, sizing, risk, compliance
+  discovery/                       Deterministic opportunity discovery
+  execution/                       Intents, kill state, reservations, protection
+  identity/                        Account ownership and authority
+  kernel/                          Shared IDs, values, and operational events
+  ledger/                          Append-only event persistence and replay
+  market_data/                     Market-data models, validation, and snapshots
+  ontology/                        Semantic releases and rebuildable projections
+  policy/                          Immutable policy and live-authority controls
+  portfolio/                       Account-partitioned projections and snapshots
+  research/                        Evidence models, watchers, and research seam
+  retrospective/                   Outcome linking and diagnosis
+  tradability/                     Account-specific tradability assessment
 tests/
-  unit/                     # Unit tests (pytest)
-  integration/              # Integration tests with broker sandboxes
-config/                     # Environment configs (dev/staging/prod)
-scripts/                    # One-off and ops scripts
-notebooks/                  # Research and backtesting notebooks (vectorbt)
+  unit/                            Offline deterministic unit tests
+  contract/                        Shared adapter behavior contracts
+  integration/                     Local-service integration tests
+  live_readiness/                  Explicit credential/readiness probes
+  replay/                          Deterministic replay tests
+migrations/                        Alembic database migrations
+ontology/                          RDF vocabulary, shapes, mappings, and policies
+config/                            Versioned runtime policy configuration
+deploy/                            Local and production deployment assets
+web/                               Operator-facing web assets
 ```
 
-## Architecture
+## Canonical rules
 
-12-agent LangGraph system. Agent roster:
-1. **Market Scanner** — filters universe by momentum/volume
-2. **Fundamental Analyst** — P/E, DCF, earnings quality
-3. **Technical Analyst** — MACD, RSI, Bollinger, order flow
-4. **Macro Analyst** — rates, FX, inflation regime
-5. **Sentiment Analyst** — news NLP, options skew
-6. **Alt Data Analyst** — satellite, web scraping, insider filings
-7. **Signal Aggregator** — weighted ensemble, confidence scoring
-8. **Red Team (Cynical Advisor)** — adversarial bear case, bias detection
-9. **Portfolio Manager** — Kelly sizing, correlation-adjusted allocation
-10. **Risk Manager** — VaR/CVaR, drawdown limits, circuit breakers
-11. **Execution Agent** — order routing, slippage minimization
-12. **Compliance Agent** — SEBI/MiFID II/PDT rule gating
-
-Orchestration framework: **LangGraph** (state persistence, conditional branching, parallel node execution).
-
-## Broker Integrations
-
-| Broker | Market | Library | MCP Port |
-|--------|--------|---------|----------|
-| Zerodha Kite Connect | NSE/BSE | kiteconnect | 8001 |
-| Angel One SmartAPI | NSE/BSE | smartapi-python | 8002 |
-| IBKR ib_insync | NYSE/NASDAQ/XETRA | ib_insync | 8003 |
-
-## Key Conventions
-
-- **Python 3.11+**, `uv` for dependency management
-- **pytest** for all tests; integration tests tagged `@pytest.mark.integration`
-- **Environment variables** in `.env` (never commit); see `config/env.example`
-- **Type hints** everywhere; `mypy --strict` enforced in CI
-- **Async-first**: all broker calls and data fetches are `async`
-- **Logging**: structured JSON via `structlog`; every trade action logged at INFO
-
-## Research Reference
-
-Before implementing any agent, risk model, or broker integration, read the relevant section of `docs/trading-bot-research.md`:
-- §1 Equity Price Determinants → `src/agents/`
-- §2 Market Data Feeds → `src/data/`
-- §3 Multi-Agent Architecture → `src/agents/`
-- §4 Framework Recommendation (LangGraph) → root orchestration
-- §5 Broker MCP Integration → `src/brokers/`
-- §6 Risk Management → `src/risk/`
-- §7 Red Team Analysis → `src/agents/red_team.py`
-- §8 Implementation Roadmap → project milestones
-
-## Compliance Constraints
-
-- **SEBI (India)**: Algo trading requires broker approval; API keys restricted per SEBI 2022 circular
-- **US PDT Rule**: < $25K account cannot make 4+ round trips in 5 days on margin
-- **MiFID II (EU)**: Best execution obligation; pre/post-trade transparency requirements
-- Compliance agent must gate every order before submission
-
-## Running Locally
-
-```bash
-uv sync
-cp config/env.example .env   # fill in API keys
-pytest tests/unit/           # run unit tests
-python -m src.main --market india --mode paper
-```
+1. Direct user instruction wins. Then follow `docs/V1-LEDGER.md`, approved
+   specifications, accepted ADRs, `CONTEXT.md`, the current implementation plan,
+   and finally research or superseded plans, in that order.
+2. The purpose of reasoning is not to defend conclusions or merely maintain
+   consistency. Maximize contact with reality and update conclusions in light of
+   evidence.
+3. Do not restore superseded designs. Preserve the deliberate divergences in
+   `docs/V1-LEDGER.md` §4.
+4. LLM output is categorical and non-executable. Deterministic code owns every
+   price, quantity, weight, target, and order.
+5. Preserve Brokerage Account partitions, account-generation kill state,
+   CAS-row-keyed reservations, immutable history, provenance, and fail-closed
+   behavior.
+6. Use fixed-point `Decimal` for money, quantity, and price. Binary float is
+   confined to statistical arrays and converted explicitly at their seams.
+7. Use Python 3.11+, frozen Pydantic v2 models, `typing.Protocol`, strict mypy,
+   Ruff, pytest, and TDD red → green.
+8. Default-gate tests are offline and deterministic. Live or network tests use
+   `@pytest.mark.integration` and stay outside that gate.
+9. Keep `CONTEXT.md` a live glossary only. Record a new ADR only for a decision
+   that is hard to reverse, surprising without context, and a genuine trade-off.
+10. Every deferred workstream follows: isolated worktree → brainstorm → design
+    spec → user review → implementation plan → execution approval → TDD with
+    review gates → whole-branch review → PR. The user merges; never push, open a
+    PR, or merge on assumptions.
