@@ -1239,3 +1239,11 @@ The bounded framework experiments are specified in [Domain Agent Framework Spike
 | shadow-only rollout | Tasks 11–12 |
 
 The remaining nine domain profiles and graphical workbench are P1 subprojects in the approved rollout. Their plan boundaries depend on the P0 release, trajectory, status, and run-projection semantics proven here; they do not block this tracer from starting.
+
+## P1 gaps identified after P0 (2026-07-24)
+
+Walking the P0 tracer against a real event (Tanla Platforms announcing quarterly results, with a next-session re-rate) surfaced two gaps between what P0 proved and what a live event-reactive swing OS needs:
+
+1. **Live NSE/BSE SourceWatcher connector.** P0 ships only `FixtureSourceWatcher` (offline) and recorded SEC/NSE/BSE adapters. There is no live poller that captures an official announcement on a schedule, so a real filing is only seen if hand-fed. The cutoff/coverage/sealing discipline is correct; the live fetch is missing. **Designed** in [Live NSE/BSE SourceWatcher + Early-Signal Tier](../specs/2026-07-24-live-source-watcher-design.md) — official announcement connector (evidence-bearing) + early-signal calendar tier (attention-only) + a committed credible-source catalog. In progress.
+
+2. **`fundamental` domain profile.** A results announcement is both a `corporate_event` (P0 handles this — "material results announcement") and a `fundamental` analysis of the reported numbers (revenue, margin, YoY). Only `corporate_event` is implemented; the `fundamental` profile that reads the numbers inside the filing is not. **Deferred** — one of the nine P1 profiles; not being built in the live-watcher phase.
