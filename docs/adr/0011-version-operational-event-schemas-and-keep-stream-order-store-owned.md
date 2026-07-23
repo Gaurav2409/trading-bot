@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Version operational-event schemas and keep stream order store-owned

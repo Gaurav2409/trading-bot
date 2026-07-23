@@ -1,6 +1,6 @@
 # WS-1 Kernel Value-Objects and Event Catalogue Hardening
 
-**Status:** Review requested
+**Status:** Approved
 
 **Date:** 2026-07-23
 
